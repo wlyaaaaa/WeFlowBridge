@@ -4,6 +4,9 @@
 >
 > 这是一个**纯文档 / 集成说明**仓库，**不含任何代码逻辑、不含任何密钥**。真实 token、数据库密钥等只存在本地 `.env`（已被 `.gitignore` 忽略）。
 
+> **📌 适用版本：WeFlow `26.5.27`（`C:\Program Files\WeFlow\WeFlow.exe`）** · **实测日期：2026-06-20**
+> WeFlow 持续更新，接口可能随版本变动。本文端点 = 源码（`app.asar`）抽取 + 本机实测双重确认；换版本后请重跑 `probe-weflow.ps1` 复核，并更新此处版本/日期。
+
 ---
 
 ## 1. 这是什么
@@ -26,11 +29,15 @@
 | **检索某人/某群的聊天记录** | `GET /api/v1/messages?talker=<id>`，支持时间范围、关键词、分页 |
 | **让 AI 总结/分析一段对话** | 拉 `chatlab=1` 标准格式 → 直接喂给模型做摘要、情绪、画像 |
 | **列出所有会话 / 找某个会话** | `GET /api/v1/sessions?keyword=工作群` |
-| **导出联系人 / 群成员** | `GET /api/v1/contacts?keyword=张三` |
+| **导出联系人** | `GET /api/v1/contacts?keyword=张三` |
+| **群成员画像（谁是群主/发言量）** | `GET /api/v1/group-members?talker=<群id>`，含 `isOwner`/`messageCount` 等 |
+| **读/分析朋友圈** | `GET /api/v1/sns/timeline`（含点赞、评论、定位）+ `GET /api/v1/sns/export/stats` |
 | **拿到图片/语音/视频文件** | 查询时 `media=1` 导出，再用 `/api/v1/media/...` 取文件 |
 | **健康检查 / 服务是否在线** | `GET /health` |
 
-一句话：**它把"我的微信历史"变成一个 AI 可读的本地数据源**——可以做检索、摘要、年度报告、双人关系分析、媒体提取等。
+一句话：**它把"我的微信历史 + 朋友圈"变成一个 AI 可读的本地数据源**——可以做检索、摘要、年度报告、双人关系分析、群画像、朋友圈分析、媒体提取等。
+
+> 完整端点（含上面没列全的朋友圈/防删等）见 [§4.5 完整端点地图](#45-完整端点地图weflow-26527实测于-2026-06-20)。
 
 ---
 
@@ -119,19 +126,34 @@ msgs = requests.get(f"{base}/api/v1/messages",
 
 ---
 
-## 4.5 实测结论（2026-06-20，本机 WeFlow）
+## 4.5 完整端点地图（WeFlow `26.5.27`，实测于 2026-06-20）
 
-| 端点 | 连通 | 鉴权 | 实测情况 |
-|------|------|------|----------|
-| `GET /health` | ✅ | 不需要 | 稳定返回 `{"status":"ok"}` |
-| `GET /api/v1/sessions` | ✅ | Bearer 必须 | 稳定，返回会话列表（含 `displayName`/`lastTimestamp`/`unreadCount`） |
-| `GET /api/v1/contacts` | ✅ | Bearer 必须 | 稳定，返回联系人列表 |
-| `GET /api/v1/messages` | ⚠️ 通但不稳 | Bearer 必须 | 需**显式 `start`/`end`**；且**同一请求结果时有时无**（曾见同一会话在 50 条 / 0 条之间跳） |
-| `GET /api/v1/media/{path}` | ◐ 未坐实 | Bearer | 端点存在，但受 `/messages` 不稳定拖累，未能稳定捞到媒体消息去实测取文件 |
+> 端点来源：从 `app.asar` 抽取的路由字面量 + 本机逐个活探。**比 fork 文档多出一整套朋友圈(SNS)、群成员、推送端点。** 所有数据接口都强制 `Bearer` 鉴权。
 
-> **已知问题**：`/messages` 不稳定 —— WeFlow 是“实时读库、无中间解密库”的架构，消息索引疑似惰性/有竞态，相同调用可能这次有数据、下次为 0。官方也标注此 API“处于早期阶段，接口可能变动”。**建议**：调用失败或返回 0 时**重试几次**；优先用 `sessions`/`contacts` 这种稳定接口；批量分析前先用 `probe-weflow.ps1` 确认当前是否能取到消息。
+| 端点 | 方法 | 状态 | 说明 / 关键字段 |
+|------|------|------|------|
+| `/health`、`/api/v1/health` | GET | ✅ 稳定 | `{"status":"ok"}`，**无需 token** |
+| `/api/v1/sessions` | GET | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount` |
+| `/api/v1/contacts` | GET | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`type` |
+| `/api/v1/messages` | GET | ⚠️ 通但不稳 | 消息；需显式 `start`/`end`，结果时有时无（见下） |
+| `/api/v1/media/{path}` | GET | ◐ 未坐实 | 取已导出媒体；受 `/messages` 不稳定拖累没稳定捞到样本 |
+| `/api/v1/group-members?talker=<群id>` | GET | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；成员字段含 `wxid`/`displayName`/`nickname`/`remark`/`alias`/`groupNickname`/`avatarUrl`/`isOwner`/`isFriend`/`messageCount` |
+| `/api/v1/sns/timeline?limit=` | GET | ✅ 实测可用 | 朋友圈时间线：`{success,count,timeline[]}`；条目字段 `tid`/`id`/`username`/`nickname`/`createTime`/`contentDesc`/`type`/`media`/`likes`/`comments`/`rawXml`/`location` |
+| `/api/v1/sns/post/{id}` | GET | 需 id（空 id→405） | 单条朋友圈详情 |
+| `/api/v1/sns/usernames` | GET | ✅ 实测可用 | `{success,usernames[]}` 有朋友圈的用户名列表 |
+| `/api/v1/sns/export` | GET | 未测 | 朋友圈导出 |
+| `/api/v1/sns/export/stats` | GET | ✅ 实测可用 | `{success,data:{totalPosts,totalFriends,myPosts}}` |
+| `/api/v1/sns/media/proxy` | GET | 未测（需参数） | 朋友圈媒体代理 |
+| `/api/v1/sns/block-delete/status` | GET | ✅ 实测可用 | `{success,installed:bool}` 防朋友圈删除钩子状态 |
+| `/api/v1/sns/block-delete/install` | **POST** | 写操作（GET→405） | 安装防删钩子 |
+| `/api/v1/sns/block-delete/uninstall` | **POST** | 写操作 | 卸载防删钩子 |
+| `/api/v1/push/messages` | ? | ⚠️ 403 未坐实 | 实时消息推送；GET/POST 均 403，疑似 SSE 流需特定握手 |
 
-**典型 Agent 工作流**：`/api/v1/sessions` 找到目标会话 → `/api/v1/messages?talker=...&chatlab=1` 拉标准化记录 → 交给模型做摘要 / 分析 / 报告。
+> 注：`/version`、`/info`、`/api/book`、`/api/v3`、`/api/v4` 这些字符串虽在包内出现，但**不是本服务的 HTTP 路由**（实测 404），请勿调用。
+
+> **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 务必显式给 `start`/`end`；② 返回 0 或失败时**重试几次**；③ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；④ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
+
+**典型 Agent 工作流**：`/api/v1/sessions` 找会话 →（群聊可 `/api/v1/group-members` 拿成员画像）→ `/api/v1/messages?talker=...&chatlab=1` 拉标准化记录 → 交给模型做摘要 / 分析 / 报告；朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
 
 ---
 
