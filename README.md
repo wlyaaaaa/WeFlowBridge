@@ -122,7 +122,9 @@ msgs = requests.get(f"{base}/api/v1/messages",
                     params={"talker": "wxid_xxx", "chatlab": 1, "limit": 100}, headers=h).json()
 ```
 
-> **实测（2026-06-20）**：本机这版 WeFlow 对**数据接口强制鉴权** —— 不带 token 返回 `401`，必须带 `Authorization: Bearer <token>`。`/health` 例外（无需 token）。缺 `talker` 返回 `400`。
+> **实测（2026-06-20）**：本机这版 WeFlow 对**数据接口强制鉴权** —— 不带 token 返回 `401`。`/health` 例外（无需 token）。缺 `talker` 返回 `400`。
+>
+> **token 三种写法都接受**（源码 `verifyToken` 实证）：① 请求头 `Authorization: Bearer <token>`；② query `?access_token=<token>`；③ body 里 `access_token`。浏览器 `EventSource`（SSE 推送）不能设头，所以**推送只能用 `?access_token=`**。
 
 ---
 
@@ -135,21 +137,26 @@ msgs = requests.get(f"{base}/api/v1/messages",
 | `/health`、`/api/v1/health` | GET | ✅ 稳定 | `{"status":"ok"}`，**无需 token** |
 | `/api/v1/sessions` | GET | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount` |
 | `/api/v1/contacts` | GET | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`type` |
-| `/api/v1/messages` | GET | ⚠️ 通但不稳 | 消息；需显式 `start`/`end`，结果时有时无（见下） |
-| `/api/v1/media/{path}` | GET | ◐ 未坐实 | 取已导出媒体；受 `/messages` 不稳定拖累没稳定捞到样本 |
+| `/api/v1/messages?talker=` | GET | ⚠️ 通但不稳 | 消息；需显式 `start`/`end`，结果时有时无（见下） |
+| `/api/v1/sessions/{id}/messages` | GET | ✅ 同源 | `/messages?talker=` 的**路径式等价写法**（空 id→400） |
+| `/api/v1/media/{path}` | GET | ✅ 端点确认 | 取已导出媒体；带**目录穿越防护**（路径越界→403）。受 `/messages` 不稳定拖累没稳定捞到样本去取文件 |
 | `/api/v1/group-members?talker=<群id>` | GET | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；成员字段含 `wxid`/`displayName`/`nickname`/`remark`/`alias`/`groupNickname`/`avatarUrl`/`isOwner`/`isFriend`/`messageCount` |
 | `/api/v1/sns/timeline?limit=` | GET | ✅ 实测可用 | 朋友圈时间线：`{success,count,timeline[]}`；条目字段 `tid`/`id`/`username`/`nickname`/`createTime`/`contentDesc`/`type`/`media`/`likes`/`comments`/`rawXml`/`location` |
-| `/api/v1/sns/post/{id}` | GET | 需 id（空 id→405） | 单条朋友圈详情 |
+| `/api/v1/sns/post/{id}` | **DELETE** | 写操作（GET→405） | **删除**一条朋友圈 |
 | `/api/v1/sns/usernames` | GET | ✅ 实测可用 | `{success,usernames[]}` 有朋友圈的用户名列表 |
-| `/api/v1/sns/export` | GET | 未测 | 朋友圈导出 |
+| `/api/v1/sns/export` | **POST** | 写操作 | 触发朋友圈导出 |
 | `/api/v1/sns/export/stats` | GET | ✅ 实测可用 | `{success,data:{totalPosts,totalFriends,myPosts}}` |
 | `/api/v1/sns/media/proxy` | GET | 未测（需参数） | 朋友圈媒体代理 |
 | `/api/v1/sns/block-delete/status` | GET | ✅ 实测可用 | `{success,installed:bool}` 防朋友圈删除钩子状态 |
 | `/api/v1/sns/block-delete/install` | **POST** | 写操作（GET→405） | 安装防删钩子 |
 | `/api/v1/sns/block-delete/uninstall` | **POST** | 写操作 | 卸载防删钩子 |
-| `/api/v1/push/messages` | ? | ⚠️ 403 未坐实 | 实时消息推送；GET/POST 均 403，疑似 SSE 流需特定握手 |
+| `/api/v1/push/messages?access_token=` | GET (SSE) | ✅ 实测可用（开开关后） | 实时消息推送 **SSE 长连接**。事件名 `message.new` / `message.revoke`；私聊字段 `rawid`/`avatarUrl`/`sourceName`/`content`/`timestamp`（秒级），群聊多 `groupName`；另有 `event`/`sessionId`/`sessionType`。有 `event: ready` 握手、25s 心跳 `: ping`、断线 `Last-Event-ID` 回放。可在设置里按会话过滤（只推/屏蔽指定会话）。详见下方「403 坐实」 |
 
 > 注：`/version`、`/info`、`/api/book`、`/api/v3`、`/api/v4` 这些字符串虽在包内出现，但**不是本服务的 HTTP 路由**（实测 404），请勿调用。
+
+> **🔎 `push/messages` 的 403 已坐实 = 配置问题，非版本、非调用错误**。源码 `handleMessagePushStream` 第一行就是 `if(configService.get('messagePushEnabled')!==true){ sendError(403,'Message push is disabled') }`。实测 Bearer 头 / `?access_token=` / 加 `Accept: text/event-stream` 三种姿势**都**返回同一个 `403 {"error":"Message push is disabled"}`，与源码逐字一致。**解法**：到 WeFlow 设置 → API 服务里把「**主动推送**」开关也打开（它与「HTTP API 服务」是两个独立开关）。
+>
+> **已实测验证（2026-06-20）**：开启「主动推送」后再连同一地址，返回从 `403` 变为 `HTTP 200 / Content-Type: text/event-stream`，首段 `event: ready` + `data: {"success":true,"stream":"…/api/v1/push/messages"}` —— 与源码完全一致。用浏览器 `EventSource` 连 `http://127.0.0.1:5031/api/v1/push/messages?access_token=<token>` 即可持续收流。
 
 > **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 务必显式给 `start`/`end`；② 返回 0 或失败时**重试几次**；③ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；④ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
 
@@ -159,13 +166,12 @@ msgs = requests.get(f"{base}/api/v1/messages",
 
 ## 5. 安全模型与红线 ⚠️
 
-WeFlow API 的安全完全依赖**两点**，缺一不可：
+WeFlow API（26.5.27）的安全模型，**读源码后修正如下**（比早前判断要好，但仍需谨慎）：
 
 1. **只绑定 `127.0.0.1`**——绝不要用端口转发 / 反代 / `0.0.0.0` 把它暴露到局域网或公网。一旦暴露，等于把全部微信记录裸奔。
-2. **CORS 开放 + 鉴权弱**——官方文档明确"支持 CORS，可从浏览器前端直接调用"，且示例无鉴权。这意味着**你在浏览器里打开的任意网页，理论上都可能 fetch `127.0.0.1:5031` 来读你的微信数据**。务必：
-   - 在 WeFlow 里**开启 token 鉴权**（如果版本支持），别裸跑；
-   - 不用时**关掉 API 服务**；
-   - 别在浏览器开着 API 的同时乱点不明网站。
+2. **数据接口强制 token**——除 `/health` 外都要 `Bearer`/`access_token`，无 token 一律 `401`。这是主要防线。
+3. **CORS 实际是受限的**（源码实证，纠正早前"任意网页可读"的说法）：`Access-Control-Allow-Origin` **只回显匹配 `^https?://(localhost|127.0.0.1)(:\d+)?$` 的源**。随机外部网站（如 `https://evil.com`）拿不到该响应头，浏览器会**拦掉**它读取响应；加之没 token 也是 401。所以"任意网页静默偷读"的风险被这两层挡住。
+   - 仍建议：**不用时关掉 API 服务**；本机别同时跑会发 `localhost` 源请求的可疑本地程序；token 不要泄露（拿到 token 仍可读全部数据）。
 
 **密钥红线（本仓库为何坚持私有 + gitignore）**：
 - `WEFLOW_DB_KEY`（SQLCipher 库密钥）解密你**全部**聊天历史，且**不可轮换**——进过任何 git 历史 = 永久泄密。
