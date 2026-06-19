@@ -47,7 +47,7 @@
 | `keyword` | ❌ | 按会话名 / ID 搜索 |
 | `limit` | ❌ | 数量上限，默认 100 |
 
-返回 `sessions[]`：`username` / `displayName` / `lastMessage` / `lastTime` / `unreadCount`。
+返回 `sessions[]`（**2026-06-20 实测字段**，与官方文档略有出入）：`username` / `displayName` / `type` / `sessionType`（`private`|`group`）/ `lastTimestamp`（秒级时间戳）/ `unreadCount`。
 
 ### `GET /api/v1/contacts` — 联系人列表
 | 参数 | 必填 | 说明 |
@@ -55,7 +55,7 @@
 | `keyword` | ❌ | 搜索关键词 |
 | `limit` | ❌ | 数量上限，默认 100 |
 
-返回 `contacts[]`：`userName` / `alias` / `nickName` / `remark`。
+返回 `contacts[]`（**2026-06-20 实测字段**）：`username` / `displayName` / `nickname` / `type`。
 
 ### `GET /api/v1/messages` — 消息（核心接口）
 | 参数 | 必填 | 说明 |
@@ -70,7 +70,9 @@
 | `media` | ❌ | `1` = 同时导出媒体并返回路径；`0` = 占位符 |
 | `image`/`voice`/`video`/`emoji` | ❌ | `media=1` 时分别控制各类媒体导出（`1/0`） |
 
-媒体默认导出到 `%USERPROFILE%\Documents\WeFlow\api-media`。
+媒体默认导出到（**实测**）`%APPDATA%\weflow\cache\api-media`。
+
+> ⚠️ **实测必读**：不传 `start`/`end` 时，默认时间窗很窄，`/messages` 经常返回 `count=0`。要取到历史消息**务必显式给** `start`/`end`（如 `start=20250101&end=20261231`）。
 
 **示例**
 ```
@@ -113,7 +115,21 @@ msgs = requests.get(f"{base}/api/v1/messages",
                     params={"talker": "wxid_xxx", "chatlab": 1, "limit": 100}, headers=h).json()
 ```
 
-> 注：官方文档示例**未带鉴权头**（仅靠绑定 127.0.0.1）。若你这个 WeFlow 版本开了 token，按上面的 `Authorization: Bearer` 传；实测以 `probe-weflow.ps1` 为准。
+> **实测（2026-06-20）**：本机这版 WeFlow 对**数据接口强制鉴权** —— 不带 token 返回 `401`，必须带 `Authorization: Bearer <token>`。`/health` 例外（无需 token）。缺 `talker` 返回 `400`。
+
+---
+
+## 4.5 实测结论（2026-06-20，本机 WeFlow）
+
+| 端点 | 连通 | 鉴权 | 实测情况 |
+|------|------|------|----------|
+| `GET /health` | ✅ | 不需要 | 稳定返回 `{"status":"ok"}` |
+| `GET /api/v1/sessions` | ✅ | Bearer 必须 | 稳定，返回会话列表（含 `displayName`/`lastTimestamp`/`unreadCount`） |
+| `GET /api/v1/contacts` | ✅ | Bearer 必须 | 稳定，返回联系人列表 |
+| `GET /api/v1/messages` | ⚠️ 通但不稳 | Bearer 必须 | 需**显式 `start`/`end`**；且**同一请求结果时有时无**（曾见同一会话在 50 条 / 0 条之间跳） |
+| `GET /api/v1/media/{path}` | ◐ 未坐实 | Bearer | 端点存在，但受 `/messages` 不稳定拖累，未能稳定捞到媒体消息去实测取文件 |
+
+> **已知问题**：`/messages` 不稳定 —— WeFlow 是“实时读库、无中间解密库”的架构，消息索引疑似惰性/有竞态，相同调用可能这次有数据、下次为 0。官方也标注此 API“处于早期阶段，接口可能变动”。**建议**：调用失败或返回 0 时**重试几次**；优先用 `sessions`/`contacts` 这种稳定接口；批量分析前先用 `probe-weflow.ps1` 确认当前是否能取到消息。
 
 **典型 Agent 工作流**：`/api/v1/sessions` 找到目标会话 → `/api/v1/messages?talker=...&chatlab=1` 拉标准化记录 → 交给模型做摘要 / 分析 / 报告。
 
