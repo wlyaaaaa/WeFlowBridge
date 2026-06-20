@@ -30,3 +30,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# 运行时日志
+logs/
+*.log
