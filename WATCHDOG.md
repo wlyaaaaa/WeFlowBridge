@@ -8,9 +8,16 @@
 | **WeFlow Watchdog** | 登录 + 每 15 分钟 | 运行 `weflow_heartbeat.ps1`：5031 不通则拉起 `WeFlow.exe` |
 | **WeChat AutoStart** | 登录 | 拉起 `Weixin.exe` 一次（微信稳定，无重启看门狗） |
 
-## 安装
+## 安装与静默执行优化
+
+### 静默执行包装器 (`weflow_heartbeat.vbs`)
+为了避免 Windows 计划任务在后台每 15 分钟执行 PowerShell 检查时在桌面短暂闪烁出现黑框（控制台窗口），项目中提供了一个 **VBScript 静默包装器**：
+- `weflow_heartbeat.vbs` 会在后台静默调用 `weflow_heartbeat.ps1` 脚本，不创建任何可见窗口。
+- `weflow_boot_guardian.ps1` 注册计划任务时，会自动检测此 VBS 文件；若存在则以 `wscript.exe` 注册该静默任务。
+
+### 安装命令
+请以**管理员权限**打开 PowerShell 并运行：
 ```powershell
-# 管理员
 powershell -ExecutionPolicy Bypass -File E:\WeFlowBridge\weflow_boot_guardian.ps1
 ```
 

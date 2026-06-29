@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   注册 WeFlow 看门狗 + 微信自启计划任务。
 .DESCRIPTION
@@ -19,14 +19,21 @@ if (-not $pr.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
 $principal = New-ScheduledTaskPrincipal -UserId $User -LogonType Interactive -RunLevel Highest
 
 # 1) WeFlow Watchdog：登录拉起 + 15 分钟检查重启
-$wfAction = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root\weflow_heartbeat.ps1`""
+$vbs = Join-Path $root 'weflow_heartbeat.vbs'
+if (Test-Path $vbs) {
+    $wfAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$vbs`""
+    $descDetail = "使用 VBS 静默包装器运行，无黑框闪烁"
+} else {
+    $wfAction = New-ScheduledTaskAction -Execute 'powershell.exe' `
+        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root\weflow_heartbeat.ps1`""
+    $descDetail = "直接运行 PowerShell 脚本"
+}
 $wfLogon  = New-ScheduledTaskTrigger -AtLogOn
 $wfRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)
 $wfSet = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName 'WeFlow Watchdog' -Action $wfAction -Trigger $wfLogon,$wfRepeat `
-    -Principal $principal -Settings $wfSet -Description 'WeFlow API(5031) 看门狗：登录拉起 + 15分钟自愈重启' -Force | Out-Null
-Write-Host "[OK] 已注册 'WeFlow Watchdog'（登录拉起 + 15分钟自愈）" -ForegroundColor Green
+    -Principal $principal -Settings $wfSet -Description "WeFlow API(5031) 看门狗 ($descDetail)：登录拉起 + 15分钟自愈重启" -Force | Out-Null
+Write-Host "[OK] 已注册 'WeFlow Watchdog'（登录拉起 + 15分钟自愈，使用: $(if (Test-Path $vbs) { 'VBS 静默' } else { 'PowerShell' })）" -ForegroundColor Green
 
 # 2) WeChat AutoStart：登录拉起一次
 $wx = 'C:\Program Files\Tencent\Weixin\Weixin.exe'
