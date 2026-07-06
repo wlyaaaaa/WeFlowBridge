@@ -1,2 +1,4 @@
+Dim shell, exitCode
 Set shell = CreateObject("WScript.Shell")
-shell.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""E:\WeFlowBridge\weflow_heartbeat.ps1""", 0, False
+exitCode = shell.Run("powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""E:\WeFlowBridge\weflow_heartbeat.ps1""", 0, True)
+WScript.Quit exitCode
