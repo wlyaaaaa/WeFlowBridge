@@ -2,9 +2,12 @@
 
 > 一页纸够你上手；要细节看 [README.md](README.md)（尤其 §4.5 完整端点地图）。
 > **基线：WeFlow `26.5.27`，实测 2026-06-20。** 换版本先跑 `probe-weflow.ps1` 复核。
+> AI 消费契约看 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)，公开仓库隐私边界看 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 
 ## 它是什么
 本机 `http://127.0.0.1:5031` 上的 WeFlow HTTP API —— 把**本地微信（4.0+）的聊天记录、联系人、群成员、朋友圈**映射成 REST 接口。只监听回环，外网不可达。解密由 WeFlow 内部完成，**密钥不是接口入参**。
+
+本仓库是 WeFlow 数据源适配器项目，负责公开安全文档、自检、看门狗和 AI 消费契约；它不是原始微信数据仓库，也不是 PersonalOS / CareerCapital / SocialCapital / LifeCases 的长期事实库。
 
 ## 鉴权（必读）
 除 `/health` 外所有接口都要 token，无 token → `401`。token 三种写法都行：
@@ -48,7 +51,9 @@ curl -H "Authorization: Bearer $WEFLOW_TOKEN" "http://127.0.0.1:5031/api/v1/sess
 ```
 
 ## 典型流程
-`sessions` 定位会话 →（群聊先 `group-members` 拿成员画像）→ `messages?...&chatlab=1` 拉标准化记录 → 交给模型做摘要/分析/报告；朋友圈走 `sns/timeline` + `sns/export/stats`。
+`sessions` 定位会话 → 判断当前库 →（群聊先 `group-members` 拿成员画像）→ 最新消息用无日期 `messages?limit=100` 并做 `lastTimestamp` 自检，历史区间才加 `start/end` → 按 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md) 输出消费字段；朋友圈走 `sns/timeline` + `sns/export/stats`。
+
+默认不要输出或保存完整原文。公开提交前按 [docs/privacy_boundary.md](docs/privacy_boundary.md) 检查，禁止提交 `.env`、token、raw messages、screenshots、database、exports 或媒体。
 
 ## 自检
 `powershell -ExecutionPolicy Bypass -File E:\WeFlowBridge\probe-weflow.ps1`
