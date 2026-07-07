@@ -79,7 +79,7 @@
 
 媒体默认导出到（**实测**）`%APPDATA%\weflow\cache\api-media`。
 
-> ⚠️ **实测必读**：不传 `start`/`end` 时，默认时间窗很窄，`/messages` 经常返回 `count=0`。要取到历史消息**务必显式给** `start`/`end`（如 `start=20250101&end=20261231`）。
+> ⚠️ **实测必读**：`/messages` 有两种稳定用法。取**最新消息**时不要依赖日期窗口，直接 `GET /api/v1/messages?talker=<id>&limit=100`，把返回数组按 `createTime` 降序理解，最新在索引 `0`，并用会话 `lastTimestamp` 与第一条消息 `createTime` 对齐自检。取**历史区间/批量回溯**时再显式给 `start`/`end`（如 `start=20250101&end=20261231`）。返回 0 可能是实时读库竞态，需重试，不要直接判断为无消息。
 
 **示例**
 ```
@@ -137,7 +137,7 @@ msgs = requests.get(f"{base}/api/v1/messages",
 | `/health`、`/api/v1/health` | GET | ✅ 稳定 | `{"status":"ok"}`，**无需 token** |
 | `/api/v1/sessions` | GET | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount` |
 | `/api/v1/contacts` | GET | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`type` |
-| `/api/v1/messages?talker=` | GET | ⚠️ 通但不稳 | 消息；需显式 `start`/`end`，结果时有时无（见下） |
+| `/api/v1/messages?talker=` | GET | ⚠️ 通但不稳 | 消息；最新消息不带 `start/end` 并用 `lastTimestamp` 自检，历史区间显式 `start/end`，结果时有时无（见下） |
 | `/api/v1/sessions/{id}/messages` | GET | ✅ 同源 | `/messages?talker=` 的**路径式等价写法**（空 id→400） |
 | `/api/v1/media/{path}` | GET | ✅ 端点确认 | 取已导出媒体；带**目录穿越防护**（路径越界→403）。受 `/messages` 不稳定拖累没稳定捞到样本去取文件 |
 | `/api/v1/group-members?talker=<群id>` | GET | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；成员字段含 `wxid`/`displayName`/`nickname`/`remark`/`alias`/`groupNickname`/`avatarUrl`/`isOwner`/`isFriend`/`messageCount` |
@@ -158,9 +158,9 @@ msgs = requests.get(f"{base}/api/v1/messages",
 >
 > **已实测验证（2026-06-20）**：开启「主动推送」后再连同一地址，返回从 `403` 变为 `HTTP 200 / Content-Type: text/event-stream`，首段 `event: ready` + `data: {"success":true,"stream":"…/api/v1/push/messages"}` —— 与源码完全一致。用浏览器 `EventSource` 连 `http://127.0.0.1:5031/api/v1/push/messages?access_token=<token>` 即可持续收流。
 
-> **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 务必显式给 `start`/`end`；② 返回 0 或失败时**重试几次**；③ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；④ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
+> **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 取最新消息时不带日期，直接 `limit=100`，取返回数组前 N 条，并用 `sessions.lastTimestamp` 对齐自检；② 取历史区间/批量回溯时显式给 `start`/`end`；③ 返回 0 或失败时**重试几次**；④ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；⑤ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
 
-**典型 Agent 工作流**：`/api/v1/sessions` 找会话 →（群聊可 `/api/v1/group-members` 拿成员画像）→ `/api/v1/messages?talker=...&chatlab=1` 拉标准化记录 → 交给模型做摘要 / 分析 / 报告；朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
+**典型 Agent 工作流**：`/api/v1/sessions` 找会话并记录 `lastTimestamp` →（群聊可 `/api/v1/group-members` 拿成员画像）→ 最新消息用 `/api/v1/messages?talker=...&limit=100`，历史区间用 `/api/v1/messages?talker=...&start=...&end=...&chatlab=1` → 交给模型做摘要 / 分析 / 报告；朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
 
 ---
 

@@ -24,7 +24,7 @@
 | 朋友圈时间线 / 统计 | `GET /api/v1/sns/timeline?limit=` · `GET /api/v1/sns/export/stats` |
 
 ## 谨慎用（实测不稳定）
-- `GET /api/v1/messages?talker=<id>` — 取消息。**坑**：① 必须显式给 `start`/`end`（`YYYYMMDD`），否则默认窗口常返回 `count=0`；② 实时读库有竞态，**同一请求结果时有时无**，返回 0 时**重试几次 / 换会话**。要标准化格式加 `&chatlab=1`，要媒体加 `&media=1`。
+- `GET /api/v1/messages?talker=<id>` — 取消息。**最新消息**优先不带 `start/end`，直接 `limit=100`，返回数组按 `createTime` 降序理解，最新在索引 `0`；再用会话 `lastTimestamp` 与第一条消息 `createTime` 自检。**历史区间/批量回溯**才显式给 `start`/`end`（`YYYYMMDD`）。实时读库有竞态，返回 0 时先重试几次 / 换会话，不要直接结论为无消息。要标准化格式加 `&chatlab=1`，要媒体加 `&media=1`。
 
 ## 写操作 / 流（知道即可，别误调）
 - `POST /api/v1/sns/export`（导出）、`DELETE /api/v1/sns/post/{id}`（删朋友圈）、`POST /api/v1/sns/block-delete/{install,uninstall}`（防删钩子）。
@@ -36,6 +36,9 @@ $cfg=@{}; Get-Content "E:\WeFlowBridge\.env" | Where-Object { $_ -match '^\s*[^#
 $base=$cfg['WEFLOW_BASE_URL']; $H=@{ Authorization="Bearer $($cfg['WEFLOW_TOKEN'])" }
 Invoke-RestMethod "$base/health"
 Invoke-RestMethod "$base/api/v1/sessions?limit=5" -Headers $H
+# 最新消息：不带 start/end
+Invoke-RestMethod "$base/api/v1/messages?talker=<id>&limit=100" -Headers $H
+# 历史区间：显式 start/end
 Invoke-RestMethod "$base/api/v1/messages?talker=<id>&start=20250101&end=20261231&chatlab=1&limit=50" -Headers $H
 ```
 
