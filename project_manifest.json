@@ -5,6 +5,9 @@
   "repository": "wlyaaaaa/WeFlowBridge",
   "visibility": "public",
   "role": "provider_facing_adapter",
+  "closeout_status": "ready_for_normal_maintenance",
+  "closeout_audit": "docs/closeout_audit.md",
+  "closeout_audited_on": "2026-07-07",
   "api_base_default": "http://127.0.0.1:5031",
   "weflow_baseline": {
     "version": "26.5.27",

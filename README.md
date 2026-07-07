@@ -26,6 +26,7 @@
 - AI 调用层在 `E:\.agents\plugins\weflow-toolkit`，不在本仓库保存长期个人事实。
 - `PersonalOS`、`CareerCapital`、`SocialCapital`、`LifeCases` 等下游项目只应按需引用 WeFlow 证据，不吞完整微信库。
 - 机器可读项目边界见 [project_manifest.json](project_manifest.json)，给 AI 快速判断本项目“拥有什么 / 不拥有什么 / 怎么验收”。
+- 项目收尾审计见 [docs/closeout_audit.md](docs/closeout_audit.md)，当前状态为 `ready_for_normal_maintenance`。
 - AI 消费契约见 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)。
 - 公开仓库隐私边界见 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 

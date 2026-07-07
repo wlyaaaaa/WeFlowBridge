@@ -21,6 +21,8 @@ class ProjectContractTests(unittest.TestCase):
         self.assertEqual(manifest["project"], "WeFlowBridge")
         self.assertEqual(manifest["visibility"], "public")
         self.assertEqual(manifest["role"], "provider_facing_adapter")
+        self.assertEqual(manifest["closeout_status"], "ready_for_normal_maintenance")
+        self.assertEqual(manifest["closeout_audit"], "docs/closeout_audit.md")
         self.assertTrue(manifest["no_raw_wechat_data"])
         self.assertEqual(
             manifest["ai_calling_layer"],
@@ -45,6 +47,25 @@ class ProjectContractTests(unittest.TestCase):
         self.assertIn("raw_messages", forbidden)
         self.assertIn("database_files", forbidden)
         self.assertIn("conversation_screenshots", forbidden)
+
+    def test_closeout_audit_exists_and_records_final_gate(self):
+        text = read_text("docs/closeout_audit.md")
+
+        required_terms = [
+            "Closeout Audit",
+            "ready_for_normal_maintenance",
+            "No Raw WeChat Data",
+            "Public Repository Boundary",
+            "AI Consumer Boundary",
+            "Non-Goals",
+            "Reopen Triggers",
+            "Verification Evidence",
+            "Residual Risks",
+            "2026-07-07",
+        ]
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, text)
 
     def test_ai_consumer_contract_exists_and_defines_required_fields(self):
         text = read_text("docs/ai_consumer_contract.md")
@@ -87,6 +108,8 @@ class ProjectContractTests(unittest.TestCase):
 
         self.assertIn("project_manifest.json", readme)
         self.assertIn("project_manifest.json", agents)
+        self.assertIn("docs/closeout_audit.md", readme)
+        self.assertIn("docs/closeout_audit.md", agents)
         self.assertIn("docs/ai_consumer_contract.md", readme)
         self.assertIn("docs/privacy_boundary.md", readme)
         self.assertIn("docs/ai_consumer_contract.md", agents)
