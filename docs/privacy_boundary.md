@@ -37,6 +37,7 @@ Local-only files may exist in the working directory, but must stay ignored:
 | `api-media/` | Media exports are private. |
 | `dump/` | Ad hoc dumps can contain full payloads. |
 | `*.db`, `*.sqlite`, `*.sqlite3` | Databases are private by default. |
+| `*.db-wal`, `*.db-shm`, `*.sqlite-wal`, `*.sqlite-shm`, `*.sqlite3-wal`, `*.sqlite3-shm` | SQLite sidecar files can contain private message data. |
 
 ## AI Output Rules
 

@@ -1,0 +1,92 @@
+{
+  "schema": "weflowbridge.project_manifest.v1",
+  "project": "WeFlowBridge",
+  "local_path": "E:\\WeFlowBridge",
+  "repository": "wlyaaaaa/WeFlowBridge",
+  "visibility": "public",
+  "role": "provider_facing_adapter",
+  "api_base_default": "http://127.0.0.1:5031",
+  "weflow_baseline": {
+    "version": "26.5.27",
+    "verified_on": "2026-06-20",
+    "requires_reprobe_after_version_change": true
+  },
+  "owns": [
+    "public_safe_endpoint_notes",
+    "health_checks",
+    "watchdog_scripts",
+    "ai_consumer_contract",
+    "privacy_boundary"
+  ],
+  "does_not_own": [
+    "raw_wechat_archive",
+    "long_term_semantic_index",
+    "relationship_analysis",
+    "career_analysis",
+    "personal_os_memory",
+    "domain_decisions"
+  ],
+  "ai_calling_layer": "E:\\.agents\\plugins\\weflow-toolkit",
+  "downstream_consumers": [
+    "PersonalOS",
+    "CareerCapital",
+    "SocialCapital",
+    "LifeCases"
+  ],
+  "privacy_forbidden": [
+    "env_files",
+    "weflow_token",
+    "weflow_db_key",
+    "raw_messages",
+    "chatlab_exports",
+    "conversation_screenshots",
+    "contact_screenshots",
+    "database_files",
+    "wal_shm_files",
+    "media_exports",
+    "full_json_exports"
+  ],
+  "required_output_envelope": [
+    "current_library",
+    "library_evidence",
+    "target_account",
+    "target_conversation",
+    "talker",
+    "time_window",
+    "retry_count",
+    "message_count",
+    "lastTimestamp_matches_newest",
+    "content_scope"
+  ],
+  "retrieval_rules": {
+    "latest_messages": {
+      "endpoint": "/api/v1/messages",
+      "query": "talker=<talker>&limit=100",
+      "do_not_use_start_end": true,
+      "sort_assumption": "createTime_desc",
+      "newest_index": 0,
+      "self_check": "sessions.lastTimestamp == messages[0].createTime",
+      "retry_on_empty": true
+    },
+    "historical_messages": {
+      "requires_start_end": true,
+      "date_format": "YYYYMMDD",
+      "retry_on_empty": true
+    },
+    "time": {
+      "unix_timestamps": "UTC epoch seconds",
+      "chinese_context_timezone": "UTC+8",
+      "do_not_use_system_local_timezone_as_truth": true
+    }
+  },
+  "safe_verification": {
+    "contract_tests": "python -m unittest tests/test_project_contracts.py",
+    "probe_script": "powershell -ExecutionPolicy Bypass -File E:\\WeFlowBridge\\probe-weflow.ps1",
+    "powershell_parse_files": [
+      "probe-weflow.ps1",
+      "weflow_heartbeat.ps1",
+      "weflow_boot_guardian.ps1"
+    ]
+  },
+  "no_raw_wechat_data": true
+}

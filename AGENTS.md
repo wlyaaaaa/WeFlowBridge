@@ -2,7 +2,7 @@
 
 > 一页纸够你上手；要细节看 [README.md](README.md)（尤其 §4.5 完整端点地图）。
 > **基线：WeFlow `26.5.27`，实测 2026-06-20。** 换版本先跑 `probe-weflow.ps1` 复核。
-> AI 消费契约看 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)，公开仓库隐私边界看 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
+> 机器可读边界看 [project_manifest.json](project_manifest.json)。AI 消费契约看 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)，公开仓库隐私边界看 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 
 ## 它是什么
 本机 `http://127.0.0.1:5031` 上的 WeFlow HTTP API —— 把**本地微信（4.0+）的聊天记录、联系人、群成员、朋友圈**映射成 REST 接口。只监听回环，外网不可达。解密由 WeFlow 内部完成，**密钥不是接口入参**。
@@ -57,3 +57,6 @@ curl -H "Authorization: Bearer $WEFLOW_TOKEN" "http://127.0.0.1:5031/api/v1/sess
 
 ## 自检
 `powershell -ExecutionPolicy Bypass -File E:\WeFlowBridge\probe-weflow.ps1`
+
+文档/边界契约测试：
+`python -m unittest E:\WeFlowBridge\tests\test_project_contracts.py`
