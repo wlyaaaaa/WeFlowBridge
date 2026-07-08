@@ -4,7 +4,7 @@ This document defines what may and may not enter the public repository `wlyaaaaa
 
 ## Repository Classification
 
-`E:\WeFlowBridge` is a public repository. Treat every committed file as public material even when it describes local-only workflows.
+`E:\Projects\Tools\WeFlowBridge` is a public repository. Treat every committed file as public material even when it describes local-only workflows.
 
 Allowed public content:
 

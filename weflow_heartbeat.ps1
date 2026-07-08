@@ -2,10 +2,10 @@
 #  weflow_heartbeat.ps1 —— WeFlow API(5031) 看门狗
 #  检查 5031 是否在线；挂了就拉起 WeFlow.exe（GUI 程序，需在用户会话中运行）。
 #  微信(Weixin)稳定，本脚本不管它（由 WeChat AutoStart 任务在登录时拉起一次）。
-#  日志: E:\WeFlowBridge\logs\weflow_heartbeat.log
+#  日志: <project>\logs\weflow_heartbeat.log
 # =====================================================================
 $ErrorActionPreference = 'SilentlyContinue'
-$root = $PSScriptRoot; if (-not $root) { $root = 'E:\WeFlowBridge' }
+$root = $PSScriptRoot; if (-not $root) { $root = 'E:\Projects\Tools\WeFlowBridge' }
 $logDir = Join-Path $root 'logs'; New-Item -ItemType Directory -Force $logDir | Out-Null
 $log = Join-Path $logDir 'weflow_heartbeat.log'
 function Log([string]$m){ ('{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $m) | Out-File $log -Append -Encoding utf8 }

@@ -1,10 +1,10 @@
 # AI Consumer Contract
 
-This document defines how AI consumers should use `E:\WeFlowBridge` as a WeChat data source adapter.
+This document defines how AI consumers should use `E:\Projects\Tools\WeFlowBridge` as a WeChat data source adapter.
 
 ## Project Role
 
-`E:\WeFlowBridge` is the provider-facing adapter for local WeFlow data access. It owns public-safe endpoint notes, health checks, watchdog scripts, and the contract for AI consumers.
+`E:\Projects\Tools\WeFlowBridge` is the provider-facing adapter for local WeFlow data access. It owns public-safe endpoint notes, health checks, watchdog scripts, and the contract for AI consumers.
 
 It does not own relationship analysis, career analysis, PersonalOS memory, raw message archives, or long-term semantic indexes. Those belong to downstream projects that call this adapter through approved skills.
 
@@ -79,7 +79,7 @@ If the requested account and active library do not match, do not present current
 
 Do not create a separate E-drive project just to manage WeFlow access. The current ownership is:
 
-- `E:\WeFlowBridge`: adapter, watchdog, public-safe docs, consumer contract.
+- `E:\Projects\Tools\WeFlowBridge`: adapter, watchdog, public-safe docs, consumer contract.
 - `E:\.agents\plugins\weflow-toolkit`: AI calling skill and helper scripts.
 - Downstream projects: task-specific analysis and decisions.
 

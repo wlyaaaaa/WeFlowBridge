@@ -1,7 +1,7 @@
 {
   "schema": "weflowbridge.project_manifest.v1",
   "project": "WeFlowBridge",
-  "local_path": "E:\\WeFlowBridge",
+  "local_path": "E:\\Projects\\Tools\\WeFlowBridge",
   "repository": "wlyaaaaa/WeFlowBridge",
   "visibility": "public",
   "role": "provider_facing_adapter",
@@ -84,7 +84,7 @@
   },
   "safe_verification": {
     "contract_tests": "python -m unittest tests/test_project_contracts.py",
-    "probe_script": "powershell -ExecutionPolicy Bypass -File E:\\WeFlowBridge\\probe-weflow.ps1",
+    "probe_script": "powershell -ExecutionPolicy Bypass -File E:\\Projects\\Tools\\WeFlowBridge\\probe-weflow.ps1",
     "powershell_parse_files": [
       "probe-weflow.ps1",
       "weflow_heartbeat.ps1",

@@ -35,7 +35,7 @@
 
 ## 30 秒 quickstart（PowerShell）
 ```powershell
-$cfg=@{}; Get-Content "E:\WeFlowBridge\.env" | Where-Object { $_ -match '^\s*[^#].*=' } | ForEach-Object { $k,$v=$_ -split '=',2; $cfg[$k.Trim()]=$v.Trim() }
+$cfg=@{}; Get-Content "E:\Projects\Tools\WeFlowBridge\.env" | Where-Object { $_ -match '^\s*[^#].*=' } | ForEach-Object { $k,$v=$_ -split '=',2; $cfg[$k.Trim()]=$v.Trim() }
 $base=$cfg['WEFLOW_BASE_URL']; $H=@{ Authorization="Bearer $($cfg['WEFLOW_TOKEN'])" }
 Invoke-RestMethod "$base/health"
 Invoke-RestMethod "$base/api/v1/sessions?limit=5" -Headers $H
@@ -56,7 +56,7 @@ curl -H "Authorization: Bearer $WEFLOW_TOKEN" "http://127.0.0.1:5031/api/v1/sess
 默认不要输出或保存完整原文。公开提交前按 [docs/privacy_boundary.md](docs/privacy_boundary.md) 检查，禁止提交 `.env`、token、raw messages、screenshots、database、exports 或媒体。
 
 ## 自检
-`powershell -ExecutionPolicy Bypass -File E:\WeFlowBridge\probe-weflow.ps1`
+`powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\probe-weflow.ps1`
 
 文档/边界契约测试：
-`python -m unittest E:\WeFlowBridge\tests\test_project_contracts.py`
+`python -m unittest E:\Projects\Tools\WeFlowBridge\tests\test_project_contracts.py`

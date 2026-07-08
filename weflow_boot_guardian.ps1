@@ -11,7 +11,7 @@
 #>
 param([string]$User = "$env:USERDOMAIN\$env:USERNAME")
 $ErrorActionPreference = 'Stop'
-$root = $PSScriptRoot; if (-not $root) { $root = 'E:\WeFlowBridge' }
+$root = $PSScriptRoot; if (-not $root) { $root = 'E:\Projects\Tools\WeFlowBridge' }
 
 $pr = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $pr.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) { throw '请以管理员 PowerShell 运行。' }

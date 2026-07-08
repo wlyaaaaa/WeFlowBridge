@@ -6,7 +6,7 @@ Status: `ready_for_normal_maintenance`
 
 ## Decision
 
-`E:\WeFlowBridge` is ready to close project construction and move into normal maintenance as a public-safe WeFlow data source adapter.
+`E:\Projects\Tools\WeFlowBridge` is ready to close project construction and move into normal maintenance as a public-safe WeFlow data source adapter.
 
 The project is intentionally narrow. It owns endpoint notes, local health checks, watchdog scripts, privacy boundaries, and the AI consumer contract. It does not own raw WeChat archives, relationship analysis, career analysis, PersonalOS memory, durable vector indexes, or domain decisions.
 
@@ -26,14 +26,14 @@ The project is intentionally narrow. It owns endpoint notes, local health checks
 Run before considering this audit current:
 
 ```powershell
-python -m unittest E:\WeFlowBridge\tests\test_project_contracts.py
+python -m unittest E:\Projects\Tools\WeFlowBridge\tests\test_project_contracts.py
 git diff --check
 ```
 
 Optional local runtime probe, only when WeFlow/WeChat is intended to be running:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\WeFlowBridge\probe-weflow.ps1
+powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\probe-weflow.ps1
 ```
 
 This audit is valid for structural closeout even if the runtime probe is not run, because the public repository must not depend on reading real WeChat data to prove its own boundary.
