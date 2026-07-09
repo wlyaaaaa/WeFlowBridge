@@ -224,6 +224,43 @@ class ProjectContractTests(unittest.TestCase):
             with self.subTest(contract_key=key):
                 self.assertIn(key, schema["properties"]["machine_contracts"]["required"])
 
+    def test_public_boundary_scripts_exist_and_cover_ci_checks(self):
+        public_boundary = read_text("tools/test-public-boundary.ps1")
+        ci_local = read_text("tools/test-ci-local.ps1")
+
+        required_public_boundary_terms = [
+            "git ls-files",
+            "git check-ignore",
+            "probe-weflow.ps1",
+            "weflow_heartbeat.ps1",
+            "weflow_boot_guardian.ps1",
+            "enable-autologin.ps1",
+            "System.Management.Automation.Language.Parser",
+            "WEFLOW_TOKEN",
+            "WEFLOW_DB_KEY",
+            "PRIVATE KEY",
+            "pdftotext",
+            "api-media/",
+            "exports/",
+            "dump/",
+            "*.sqlite",
+        ]
+        for term in required_public_boundary_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, public_boundary)
+
+        required_ci_terms = [
+            "python -m unittest tests/test_project_contracts.py",
+            "tools/test-public-boundary.ps1",
+        ]
+        for term in required_ci_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, ci_local)
+
+        self.assertNotIn("Register-ScheduledTask", public_boundary)
+        self.assertNotIn("Set-ItemProperty", public_boundary)
+        self.assertNotIn("Start-Process", public_boundary)
+
     def test_ai_docs_prefer_v2_toolkit_and_chatlab_history(self):
         readme = read_text("README.md")
         agents = read_text("AGENTS.md")
