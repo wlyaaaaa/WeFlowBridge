@@ -31,6 +31,31 @@ def assert_public_safe_text(testcase: unittest.TestCase, text: str) -> None:
 
 
 class ProjectContractTests(unittest.TestCase):
+    def test_readme_is_star_optimized_for_public_ai_agent_users(self):
+        readme = read_text("README.md")
+
+        required_terms = [
+            "Local-first WeChat API bridge for AI agents",
+            "Why this exists",
+            "What you get",
+            "What this repository never stores",
+            "Quickstart",
+            "OpenAPI",
+            "JSON Schema",
+            "privacy guardrails",
+            "WeFlow 26.7.3",
+        ]
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, readme)
+
+        first_screen = readme[:1800]
+        self.assertIn("local-first", first_screen.lower())
+        self.assertIn("AI agents", first_screen)
+        self.assertIn("WeChat", first_screen)
+        self.assertNotIn("私有，供 AI 集成", first_screen)
+        self.assertNotIn("给我（主脑）", first_screen)
+
     def test_project_manifest_exists_and_defines_ai_safe_boundaries(self):
         manifest = read_json("project_manifest.json")
 
