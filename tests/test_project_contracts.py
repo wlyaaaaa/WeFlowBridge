@@ -186,6 +186,7 @@ class ProjectContractTests(unittest.TestCase):
 
         self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
         self.assertEqual(schema["title"], "WeFlowBridge AI Consumer Envelope v2")
+        self.assertFalse(schema["additionalProperties"])
         required = set(schema["required"])
         self.assertGreaterEqual(
             required,
@@ -204,8 +205,13 @@ class ProjectContractTests(unittest.TestCase):
                 "endpoint_family",
                 "sync_watermark",
                 "media_manifest",
+                "message_content_included",
+                "privacy",
             },
         )
+        for forbidden_key in ("raw_messages", "message_text", "mediaPath", "local_path"):
+            with self.subTest(forbidden_key=forbidden_key):
+                self.assertNotIn(forbidden_key, schema["properties"])
         self.assertEqual(example["schema_version"], "ai-consumer-envelope.v2")
         self.assertEqual(example["talker"], "<redacted:chatroom>")
         self.assertFalse(example["message_content_included"])
@@ -244,6 +250,16 @@ class ProjectContractTests(unittest.TestCase):
             "exports/",
             "dump/",
             "*.sqlite",
+            "*.png",
+            "*.jpg",
+            "*.webp",
+            "*.mp4",
+            "*.m4a",
+            "chatlab*.json",
+            "messages*.json",
+            "README.pdf",
+            "AGENTS.pdf",
+            "WATCHDOG.pdf",
         ]
         for term in required_public_boundary_terms:
             with self.subTest(term=term):
@@ -274,6 +290,7 @@ class ProjectContractTests(unittest.TestCase):
             "base_url_redacted",
             "token_present",
             "endpoint_results",
+            "$effectiveNoMessages = $NoMessages -or $Mode -eq 'MetadataOnly'",
             "message_text_printed",
             "raw_media_paths_included",
             "token_printed",
@@ -287,6 +304,15 @@ class ProjectContractTests(unittest.TestCase):
         self.assertNotIn("Set-ItemProperty", script)
         self.assertNotIn("DefaultPassword", script)
 
+    def test_openapi_write_operations_are_not_ai_callable(self):
+        openapi = read_text("docs/openapi.yaml")
+
+        self.assertIn("x-weflowbridge-ai-allowed: false", openapi)
+        self.assertIn("deprecated: true", openapi)
+        write_operation_count = openapi.count("x-weflowbridge-risk: write-operation")
+        not_allowed_count = openapi.count("x-weflowbridge-ai-allowed: false")
+        self.assertEqual(write_operation_count, not_allowed_count)
+
     def test_ci_workflow_and_docs_link_machine_contracts(self):
         workflow = read_text(".github/workflows/contract.yml")
         readme = read_text("README.md")
@@ -297,6 +323,7 @@ class ProjectContractTests(unittest.TestCase):
 
         workflow_terms = [
             "windows-latest",
+            "choco install poppler",
             "python -m unittest tests/test_project_contracts.py",
             "tools/test-ci-local.ps1",
             "pull_request",

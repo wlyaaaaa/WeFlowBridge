@@ -11,6 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
+$effectiveNoMessages = $NoMessages -or $Mode -eq 'MetadataOnly'
 
 function Get-Shape($value) {
     if ($null -eq $value) { return '' }
@@ -143,7 +144,7 @@ if (-not $envExists) {
             base_url_redacted = 'http://127.0.0.1:5031'
             token_present = $false
             mode = $Mode
-            no_messages = [bool]$NoMessages
+            no_messages = [bool]$effectiveNoMessages
             privacy = @{
                 redacted = $true
                 message_text_printed = $false
@@ -206,12 +207,12 @@ if ($Json) {
             $groupPost = Invoke-JsonRequest 'POST /api/v1/group-members (redacted group)' 'POST' 'group_members' "$base/api/v1/group-members" $headers @{ chatroomId = $groupTalker; includeMessageCounts = $true }
             $endpointResults.Add($groupPost.result)
 
-            if (-not $NoMessages) {
+            if (-not $effectiveNoMessages) {
                 $latest = Invoke-JsonRequest 'GET /api/v1/messages (redacted group, latest)' 'GET' 'messages' "${base}/api/v1/messages?talker=$groupTalker&limit=5" $headers
                 $endpointResults.Add($latest.result)
 
                 $encodedTalker = [uri]::EscapeDataString($groupTalker)
-                $pull = Invoke-JsonRequest 'GET /api/v1/sessions/{id}/messages (ChatLab Pull)' 'GET' 'chatlab_pull' "$base/api/v1/sessions/$encodedTalker/messages?limit=1" $headers
+                $pull = Invoke-JsonRequest 'GET /api/v1/sessions/{id}/messages (ChatLab Pull)' 'GET' 'chatlab_pull' "${base}/api/v1/sessions/$encodedTalker/messages?limit=1" $headers
                 $endpointResults.Add($pull.result)
             }
         }
@@ -228,7 +229,7 @@ if ($Json) {
         base_url_redacted = Get-RedactedBaseUrl $base
         token_present = [bool]$headers.Count
         mode = $Mode
-        no_messages = [bool]$NoMessages
+        no_messages = [bool]$effectiveNoMessages
         privacy = @{
             redacted = $true
             message_text_printed = $false
@@ -286,7 +287,7 @@ if ($grp) {
 $es = Try-Get 'GET /api/v1/sns/export/stats' "${base}/api/v1/sns/export/stats" $headers
 if ($es) { Write-Host "     sns_stats: totalPosts=$($es.data.totalPosts) totalFriends=$($es.data.totalFriends) myPosts=$($es.data.myPosts)" }
 
-if ($grp -and -not $NoMessages) {
+if ($grp -and -not $effectiveNoMessages) {
     $latest = Try-Get 'GET /api/v1/messages (redacted group, latest no date)' "${base}/api/v1/messages?talker=$grp&limit=5" $headers
     if ($latest) {
         $items = @()

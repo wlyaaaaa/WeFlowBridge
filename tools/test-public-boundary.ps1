@@ -37,18 +37,41 @@ $forbiddenTrackedPathPatterns = @(
     '(^|/)api-media/',
     '(^|/)exports/',
     '(^|/)dump/',
+    '(^|/)screenshots?/',
+    '(^|/)media/',
+    '(^|/)chatlab[^/]*\.json$',
+    '(^|/)messages[^/]*\.json$',
     '\.db$',
     '\.sqlite$',
     '\.sqlite3$',
     '\.db-wal$',
     '\.db-shm$',
     '\.sqlite-wal$',
-    '\.sqlite-shm$'
+    '\.sqlite-shm$',
+    '\.png$',
+    '\.jpg$',
+    '\.jpeg$',
+    '\.webp$',
+    '\.gif$',
+    '\.mp4$',
+    '\.mov$',
+    '\.m4a$',
+    '\.mp3$',
+    '\.wav$'
+)
+
+$allowedBinaryDocs = @(
+    'AGENTS.pdf',
+    'README.pdf',
+    'WATCHDOG.pdf'
 )
 
 foreach ($file in $trackedFiles) {
     $normalized = $file -replace '\\', '/'
     if ($normalized -eq '.env.example') {
+        continue
+    }
+    if ($allowedBinaryDocs -contains $normalized) {
         continue
     }
     foreach ($pattern in $forbiddenTrackedPathPatterns) {
@@ -90,7 +113,14 @@ $documentedPrivateGlobs = @(
     '*.sqlite',
     '*.sqlite3',
     '*.db-wal',
-    '*.sqlite-shm'
+    '*.sqlite-shm',
+    '*.png',
+    '*.jpg',
+    '*.webp',
+    '*.mp4',
+    '*.m4a',
+    'chatlab*.json',
+    'messages*.json'
 )
 
 $secretPatterns = @(
@@ -165,7 +195,11 @@ if ($pdfTool) {
     }
     Pass "PDF text scan through pdftotext"
 } else {
-    Write-Host "[SKIP] pdftotext not found; PDF text scan skipped" -ForegroundColor Yellow
+    $pdfFiles = @($trackedFiles | Where-Object { $_ -match '^(README|AGENTS|WATCHDOG)\.pdf$' })
+    if ($env:GITHUB_ACTIONS -eq 'true' -and $pdfFiles.Count -gt 0) {
+        Fail "pdftotext not found in CI while tracked PDFs exist: $($pdfFiles -join ', ')"
+    }
+    Write-Host "[SKIP] pdftotext not found; PDF text scan skipped for README.pdf, AGENTS.pdf, WATCHDOG.pdf" -ForegroundColor Yellow
 }
 
 $parseTargets = @(

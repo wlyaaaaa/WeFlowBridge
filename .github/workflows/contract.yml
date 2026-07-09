@@ -19,6 +19,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install PDF text scanner
+        shell: powershell
+        run: choco install poppler -y
+
       - name: Python contract tests
         shell: powershell
         run: python -m unittest tests/test_project_contracts.py

@@ -3,7 +3,7 @@
   "$id": "https://github.com/wlyaaaaa/WeFlowBridge/schemas/ai-consumer-envelope.v2.schema.json",
   "title": "WeFlowBridge AI Consumer Envelope v2",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
     "current_library",
     "library_evidence",
@@ -18,7 +18,9 @@
     "request_method",
     "endpoint_family",
     "sync_watermark",
-    "media_manifest"
+    "media_manifest",
+    "message_content_included",
+    "privacy"
   ],
   "properties": {
     "schema_version": {

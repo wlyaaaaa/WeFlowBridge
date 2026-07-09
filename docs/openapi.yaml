@@ -226,6 +226,8 @@ paths:
       tags: [sns]
       summary: Trigger Moments export.
       x-weflowbridge-risk: write-operation
+      x-weflowbridge-ai-allowed: false
+      deprecated: true
       responses:
         "200":
           description: Export started by local user intent.
@@ -234,6 +236,8 @@ paths:
       tags: [sns]
       summary: Delete a Moments post.
       x-weflowbridge-risk: write-operation
+      x-weflowbridge-ai-allowed: false
+      deprecated: true
       parameters:
         - name: id
           in: path
@@ -248,6 +252,8 @@ paths:
       tags: [sns]
       summary: Install local anti-delete hook.
       x-weflowbridge-risk: write-operation
+      x-weflowbridge-ai-allowed: false
+      deprecated: true
       responses:
         "200":
           description: Hook installation result.
@@ -256,6 +262,8 @@ paths:
       tags: [sns]
       summary: Uninstall local anti-delete hook.
       x-weflowbridge-risk: write-operation
+      x-weflowbridge-ai-allowed: false
+      deprecated: true
       responses:
         "200":
           description: Hook removal result.
