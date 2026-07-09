@@ -85,6 +85,38 @@ class ProjectContractTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, text)
 
+    def test_weflow_2673_ai_contract_is_documented(self):
+        manifest = read_json("project_manifest.json")
+        readme = read_text("README.md")
+        agents = read_text("AGENTS.md")
+        contract = read_text("docs/ai_consumer_contract.md")
+
+        self.assertEqual(manifest["weflow_baseline"]["version"], "26.7.3")
+        self.assertEqual(manifest["weflow_baseline"]["verified_on"], "2026-07-09")
+        self.assertIn("ai_contract_version", manifest)
+        self.assertEqual(manifest["ai_contract_version"], "v2")
+
+        for text in (readme, agents):
+            with self.subTest(document="entrypoint"):
+                self.assertIn("26.7.3", text)
+                self.assertIn("ChatLab Pull", text)
+                self.assertIn("POST", text)
+
+        required_contract_terms = [
+            "AI Consumer Contract v2",
+            "ChatLab Pull",
+            "/api/v1/sessions/{id}/messages",
+            "request_method",
+            "endpoint_family",
+            "sync_watermark",
+            "replyToMessageId",
+            "quote",
+            "media_manifest",
+        ]
+        for term in required_contract_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, contract)
+
     def test_privacy_boundary_exists_and_blocks_private_material(self):
         text = read_text("docs/privacy_boundary.md")
 

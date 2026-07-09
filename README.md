@@ -4,7 +4,7 @@
 >
 > 这是一个**WeFlow 数据源适配器项目**：公开仓库只保存 API 行为说明、自检/看门狗脚本和 AI 消费契约，**不保存任何密钥或原始微信数据**。真实 token、数据库密钥等只存在本地 `.env`（已被 `.gitignore` 忽略）。
 
-> **📌 适用版本：WeFlow `26.5.27`（`C:\Program Files\WeFlow\WeFlow.exe`）** · **实测日期：2026-06-20**
+> **📌 适用版本：WeFlow `26.7.3`（`C:\Program Files\WeFlow\WeFlow.exe`，ProductVersion `26.7.3.0`）** · **实测日期：2026-07-09**
 > WeFlow 持续更新，接口可能随版本变动。本文端点 = 源码（`app.asar`）抽取 + 本机实测双重确认；换版本后请重跑 `probe-weflow.ps1` 复核，并更新此处版本/日期。
 
 ---
@@ -39,6 +39,7 @@
 | **检索某人/某群的聊天记录** | `GET /api/v1/messages?talker=<id>`，支持时间范围、关键词、分页 |
 | **让 AI 总结/分析一段对话** | 拉 `chatlab=1` 标准格式 → 直接喂给模型做摘要、情绪、画像 |
 | **列出所有会话 / 找某个会话** | `GET /api/v1/sessions?keyword=工作群` |
+| **给 AI/ChatLab 做增量读取** | `GET /api/v1/sessions?format=chatlab` → `GET /api/v1/sessions/{id}/messages`（ChatLab Pull，含 `sync` 游标） |
 | **导出联系人** | `GET /api/v1/contacts?keyword=张三` |
 | **群成员画像（谁是群主/发言量）** | `GET /api/v1/group-members?talker=<群id>`，含 `isOwner`/`messageCount` 等 |
 | **读/分析朋友圈** | `GET /api/v1/sns/timeline`（含点赞、评论、定位）+ `GET /api/v1/sns/export/stats` |
@@ -53,7 +54,7 @@
 
 ## 3. 接口参考
 
-本节列出最常用的**只读查询接口**（均为 `GET`），base = `http://127.0.0.1:5031`。完整端点（含 `POST`/`DELETE` 写操作、朋友圈、推送）见下方 **§4.5 完整端点地图**。
+本节列出最常用的**只读查询接口**，base = `http://127.0.0.1:5031`。WeFlow `26.7.3` 中多数查询接口同时接受 `GET` query 和 `POST` JSON body；简单查询用 `GET`，参数复杂时 AI 调用层可用 `POST`。完整端点（含写操作、朋友圈、推送）见下方 **§4.5 完整端点地图**。
 
 ### `GET /health` — 健康检查
 返回 `{ "status": "ok" }`。用来判断服务是否启动。
@@ -80,12 +81,12 @@
 | `talker` | ✅ | 会话 ID（wxid 或群 ID） |
 | `limit` | ❌ | 返回条数，默认 100，范围 1~10000 |
 | `offset` | ❌ | 分页偏移，默认 0 |
-| `start` / `end` | ❌ | 时间范围，格式 `YYYYMMDD` |
+| `start` / `end` | ❌ | 时间范围，支持 `YYYYMMDD` 或时间戳 |
 | `keyword` | ❌ | 按消息显示文本过滤 |
 | `chatlab` | ❌ | `1` = 输出 ChatLab 格式 |
 | `format` | ❌ | `json`（默认）或 `chatlab` |
-| `media` | ❌ | `1` = 同时导出媒体并返回路径；`0` = 占位符 |
-| `image`/`voice`/`video`/`emoji` | ❌ | `media=1` 时分别控制各类媒体导出（`1/0`） |
+| `media` | ❌ | `1` = 同时导出媒体并返回路径；`0` = 占位符；兼容别名 `meiti` |
+| `image`/`voice`/`video`/`emoji` | ❌ | `media=1` 时分别控制各类媒体导出（`1/0`）；`image` 兼容 `tupian`，`voice` 兼容 `vioce` |
 
 媒体默认导出到（**实测**）`%APPDATA%\weflow\cache\api-media`。
 
@@ -103,6 +104,16 @@ GET /api/v1/messages?talker=wxid_xxx&media=1&image=1&voice=1&video=0&emoji=0
 ### `GET /api/v1/media/{relativePath}` — 取已导出的媒体
 例：`/api/v1/media/wxid_xxx/images/image_123.jpg`。需先用 `media=1` 导出才能访问。支持 png/jpg/gif/webp/wav/mp3/mp4。
 
+### ChatLab Pull — AI 增量读取优先入口
+WeFlow `26.7.3` 支持 ChatLab Pull 形态，适合 AI 做批量或增量读取：
+
+```
+GET /api/v1/sessions?format=chatlab
+GET /api/v1/sessions/{id}/messages?since=<unix_seconds>&end=<unix_seconds>&limit=5000&offset=0
+```
+
+`/api/v1/sessions/{id}/messages` 返回 `chatlab`、`meta`、`members`、`messages` 和 `sync`。AI 调用层应保留 `sync.hasMore`、`sync.nextSince`、`sync.nextOffset`、`sync.watermark`；消息字段里重点保留 `platformMessageId`、`replyToMessageId`、`quote`、`mediaPath` 等元数据。公开仓库不得保存完整 transcript、媒体文件或 raw JSON 导出。
+
 ### ChatLab 消息类型映射
 `0` 文本 · `1` 图片 · `2` 语音 · `3` 视频 · `4` 文件 · `5` 表情 · `7` 链接 · `8` 位置 · `20` 红包 · `21` 转账 · `23` 通话 · `80` 系统 · `81` 撤回 · `99` 其他
 
@@ -112,7 +123,7 @@ GET /api/v1/messages?talker=wxid_xxx&media=1&image=1&voice=1&video=0&emoji=0
 
 **绝不要把 token / 密钥 / wxid 写进代码或仓库**。一律从本地 `.env` 读：
 
-AI 消费者必须遵守 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)：先判断当前 WeFlow 库，最新消息不带 `start/end`，输出或内部保留 `current_library`、`target_conversation`、`talker`、`time_window`、`retry_count`、`message_count`、`lastTimestamp_matches_newest` 等字段。隐私与公开提交红线见 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
+AI 消费者必须遵守 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)：先判断当前 WeFlow 库，最新消息不带 `start/end`，历史/大批量读取优先用 ChatLab Pull，输出或内部保留 `current_library`、`target_conversation`、`talker`、`time_window`、`retry_count`、`message_count`、`lastTimestamp_matches_newest`、`request_method`、`endpoint_family`、`sync_watermark` 等字段。隐私与公开提交红线见 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 
 ```powershell
 # PowerShell：从 .env 读配置后调用
@@ -140,20 +151,20 @@ msgs = requests.get(f"{base}/api/v1/messages",
 
 ---
 
-## 4.5 完整端点地图（WeFlow `26.5.27`，实测于 2026-06-20）
+## 4.5 完整端点地图（WeFlow `26.7.3`，实测于 2026-07-09）
 
 > 端点来源：从 `app.asar` 抽取的路由字面量 + 本机逐个活探。**比 fork 文档多出一整套朋友圈(SNS)、群成员、推送端点。** 所有数据接口都强制 `Bearer` 鉴权。
 
 | 端点 | 方法 | 状态 | 说明 / 关键字段 |
 |------|------|------|------|
 | `/health`、`/api/v1/health` | GET | ✅ 稳定 | `{"status":"ok"}`，**无需 token** |
-| `/api/v1/sessions` | GET | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount` |
-| `/api/v1/contacts` | GET | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`type` |
-| `/api/v1/messages?talker=` | GET | ⚠️ 通但不稳 | 消息；最新消息不带 `start/end` 并用 `lastTimestamp` 自检，历史区间显式 `start/end`，结果时有时无（见下） |
-| `/api/v1/sessions/{id}/messages` | GET | ✅ 同源 | `/messages?talker=` 的**路径式等价写法**（空 id→400） |
+| `/api/v1/sessions` | GET/POST | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount`；`format=chatlab` 返回 ChatLab Pull 会话索引 |
+| `/api/v1/contacts` | GET/POST | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`remark`/`alias`/`avatarUrl`/`type` |
+| `/api/v1/messages?talker=` | GET/POST | ⚠️ 通但不稳 | 消息；最新消息不带 `start/end` 并用 `lastTimestamp` 自检，历史区间显式 `start/end`，结果时有时无（见下）；支持 `replyToMessageId`/`quote` 和媒体别名 |
+| `/api/v1/sessions/{id}/messages` | GET | ✅ ChatLab Pull | AI 增量读取优先入口；返回 `chatlab`/`meta`/`members`/`messages`/`sync`，含 `sync.watermark` |
 | `/api/v1/media/{path}` | GET | ✅ 端点确认 | 取已导出媒体；带**目录穿越防护**（路径越界→403）。受 `/messages` 不稳定拖累没稳定捞到样本去取文件 |
-| `/api/v1/group-members?talker=<群id>` | GET | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；成员字段含 `wxid`/`displayName`/`nickname`/`remark`/`alias`/`groupNickname`/`avatarUrl`/`isOwner`/`isFriend`/`messageCount` |
-| `/api/v1/sns/timeline?limit=` | GET | ✅ 实测可用 | 朋友圈时间线：`{success,count,timeline[]}`；条目字段 `tid`/`id`/`username`/`nickname`/`createTime`/`contentDesc`/`type`/`media`/`likes`/`comments`/`rawXml`/`location` |
+| `/api/v1/group-members?chatroomId=<群id>` | GET/POST | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；`talker` 仍兼容；可用 `includeMessageCounts`/`withCounts` |
+| `/api/v1/sns/timeline?limit=` | GET | ✅ 实测可用 | 朋友圈时间线：`{success,count,timeline[]}`；支持 `usernames`/`keyword`/`start`/`end`/`media`/`replace`/`inline` |
 | `/api/v1/sns/post/{id}` | **DELETE** | 写操作（GET→405） | **删除**一条朋友圈 |
 | `/api/v1/sns/usernames` | GET | ✅ 实测可用 | `{success,usernames[]}` 有朋友圈的用户名列表 |
 | `/api/v1/sns/export` | **POST** | 写操作 | 触发朋友圈导出 |
@@ -172,7 +183,7 @@ msgs = requests.get(f"{base}/api/v1/messages",
 
 > **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 取最新消息时不带日期，直接 `limit=100`，取返回数组前 N 条，并用 `sessions.lastTimestamp` 对齐自检；② 取历史区间/批量回溯时显式给 `start`/`end`；③ 返回 0 或失败时**重试几次**；④ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；⑤ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
 
-**典型 Agent 工作流**：`/api/v1/sessions` 找会话并记录 `lastTimestamp` →（群聊可 `/api/v1/group-members` 拿成员画像）→ 最新消息用 `/api/v1/messages?talker=...&limit=100`，历史区间用 `/api/v1/messages?talker=...&start=...&end=...&chatlab=1` → 交给模型做摘要 / 分析 / 报告；朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
+**典型 Agent 工作流**：`/api/v1/sessions` 找会话并记录 `lastTimestamp` →（群聊可 `/api/v1/group-members` 拿成员画像）→ 最新消息用 `/api/v1/messages?talker=...&limit=100` 并做对齐自检 → 历史/大批量读取优先用 ChatLab Pull：`/api/v1/sessions/{id}/messages?since=...&end=...&limit=5000`，保留 `sync` 游标 → 需要关键词或媒体时再用 `/api/v1/messages` 的 legacy JSON 参数 → 朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
 
 ---
 

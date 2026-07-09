@@ -10,10 +10,12 @@
   "closeout_audited_on": "2026-07-07",
   "api_base_default": "http://127.0.0.1:5031",
   "weflow_baseline": {
-    "version": "26.5.27",
-    "verified_on": "2026-06-20",
+    "version": "26.7.3",
+    "product_version": "26.7.3.0",
+    "verified_on": "2026-07-09",
     "requires_reprobe_after_version_change": true
   },
+  "ai_contract_version": "v2",
   "owns": [
     "public_safe_endpoint_notes",
     "health_checks",
@@ -61,10 +63,22 @@
     "lastTimestamp_matches_newest",
     "content_scope"
   ],
+  "ai_contract_v2_fields": [
+    "request_method",
+    "endpoint_family",
+    "sync_watermark",
+    "replyToMessageId",
+    "quote",
+    "media_manifest"
+  ],
   "retrieval_rules": {
     "latest_messages": {
       "endpoint": "/api/v1/messages",
       "query": "talker=<talker>&limit=100",
+      "methods": [
+        "GET",
+        "POST"
+      ],
       "do_not_use_start_end": true,
       "sort_assumption": "createTime_desc",
       "newest_index": 0,
@@ -72,8 +86,15 @@
       "retry_on_empty": true
     },
     "historical_messages": {
-      "requires_start_end": true,
-      "date_format": "YYYYMMDD",
+      "preferred_endpoint": "/api/v1/sessions/{id}/messages",
+      "preferred_query": "since=<unix_seconds>&end=<unix_seconds>&limit=<n>&offset=<n>",
+      "preferred_time_format": "unix_seconds",
+      "format": "ChatLab Pull",
+      "supports_incremental_sync": true,
+      "bounded_window_required": true,
+      "legacy_endpoint": "/api/v1/messages",
+      "legacy_query": "talker=<talker>&start=<YYYYMMDD>&end=<YYYYMMDD>",
+      "legacy_date_format": "YYYYMMDD",
       "retry_on_empty": true
     },
     "time": {

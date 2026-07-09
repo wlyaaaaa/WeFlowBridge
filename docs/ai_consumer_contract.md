@@ -1,6 +1,8 @@
-# AI Consumer Contract
+# AI Consumer Contract v2
 
 This document defines how AI consumers should use `E:\Projects\Tools\WeFlowBridge` as a WeChat data source adapter.
+
+Contract v2 is verified against WeFlow `26.7.3` / `26.7.3.0` on 2026-07-09. It keeps the older defensive `/api/v1/messages` rules, but adds the 7.3 API shapes that are better for AI integration: JSON-body `POST` calls, ChatLab Pull, incremental `sync` metadata, quote metadata, and explicit media manifests.
 
 ## Project Role
 
@@ -34,6 +36,10 @@ Any AI consumer that reads WeFlow messages must report or internally preserve th
 | `message_count` | Number of messages returned in the final batch |
 | `lastTimestamp_matches_newest` | Whether `sessions.lastTimestamp` equals `messages[0].createTime` for latest reads |
 | `content_scope` | Whether output contains metadata only, excerpts, or full text |
+| `request_method` | `GET` or `POST`; prefer `POST` when parameters are complex or contain many filters |
+| `endpoint_family` | `sessions`, `messages`, `chatlab_pull`, `group_members`, `sns`, or `push` |
+| `sync_watermark` | `sync.watermark` from ChatLab Pull, when present |
+| `media_manifest` | Metadata-only list of media fields or exported file counts; do not store media payloads in this repository |
 
 ## Retrieval Rules
 
@@ -47,9 +53,27 @@ Latest messages:
 
 Historical reads:
 
-1. Use explicit `start=<YYYYMMDD>&end=<YYYYMMDD>`.
-2. Use a bounded window that fits the user request.
-3. Do not infer "no messages" from a single empty response; retry first.
+1. Prefer ChatLab Pull: `GET /api/v1/sessions/{id}/messages?since=<unix_seconds>&end=<unix_seconds>&limit=<n>&offset=<n>`.
+2. Preserve the returned `sync` block, especially `sync.hasMore`, `sync.nextSince`, `sync.nextOffset`, and `sync.watermark`.
+3. Use bounded windows that fit the user request.
+4. Fall back to `/api/v1/messages?talker=<talker>&start=<YYYYMMDD>&end=<YYYYMMDD>` only when the consumer needs legacy JSON, keyword filtering, or media export options.
+5. Do not infer "no messages" from a single empty response; retry first.
+
+ChatLab Pull:
+
+1. Use `GET /api/v1/sessions?format=chatlab` to list AI-friendly remote data-source candidates.
+2. Use `/api/v1/sessions/{id}/messages` for bulk or incremental transcript reads.
+3. Treat `messages[].platformMessageId` as the stable message identity inside a pull.
+4. Preserve `messages[].replyToMessageId` when present so reply chains can be reconstructed.
+5. Preserve `quote` as quoted-message metadata. Do not promote quoted private text into public docs.
+6. Record `endpoint_family=chatlab_pull` and `request_method=GET`.
+
+JSON messages:
+
+1. `GET /api/v1/messages` and `POST /api/v1/messages` are both valid in WeFlow 26.7.3.
+2. Prefer `POST` with `Content-Type: application/json` for complex parameter sets.
+3. When media is requested, keep only a `media_manifest` in durable AI outputs: media type, counts, and safe local path hints when needed. Do not store media payloads here.
+4. Preserve `replyToMessageId` and `quote` for reply-aware summarization.
 
 Time handling:
 
@@ -74,6 +98,8 @@ If the requested account and active library do not match, do not present current
 - Empty message results mean "empty or unstable response after N retries", not "no messages", unless the active library and time window are verified.
 - A forwarded XML source is not proof that the target group is readable in the active library.
 - A successful metadata probe is not consent to publish raw messages.
+- A successful ChatLab Pull probe is not consent to create a long-term transcript archive.
+- A populated `media_manifest` is not consent to publish images, voice, video, emoji, or local media paths.
 
 ## Stable Integration Decision
 

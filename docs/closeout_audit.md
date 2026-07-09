@@ -48,7 +48,7 @@ This audit is valid for structural closeout even if the runtime probe is not run
 
 ## Residual Risks
 
-- WeFlow can change API behavior after version `26.5.27`; rerun `probe-weflow.ps1` after upgrades.
+- WeFlow can change API behavior after version `26.7.3`; rerun `probe-weflow.ps1` after upgrades.
 - `/api/v1/messages` is known to be unstable; consumers must retry and preserve `lastTimestamp_matches_newest`.
 - The local token can read private WeChat data if exposed; keep it only in ignored `.env`.
 - Public docs can still leak privacy through examples; keep placeholders generic.

@@ -1,7 +1,7 @@
 # AGENTS.md — WeFlow API 给 AI Agent 的速查
 
 > 一页纸够你上手；要细节看 [README.md](README.md)（尤其 §4.5 完整端点地图）。
-> **基线：WeFlow `26.5.27`，实测 2026-06-20。** 换版本先跑 `probe-weflow.ps1` 复核。
+> **基线：WeFlow `26.7.3` / ProductVersion `26.7.3.0`，实测 2026-07-09。** 换版本先跑 `probe-weflow.ps1` 复核。
 > 机器可读边界看 [project_manifest.json](project_manifest.json)。收尾审计看 [docs/closeout_audit.md](docs/closeout_audit.md)。AI 消费契约看 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)，公开仓库隐私边界看 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 
 ## 它是什么
@@ -22,12 +22,15 @@
 |------|------|
 | 服务在线？ | `GET /health`（无需 token） |
 | 会话列表 | `GET /api/v1/sessions?keyword=&limit=` |
+| AI 会话索引 | `GET /api/v1/sessions?format=chatlab`（ChatLab Pull 会话列表） |
+| AI 增量消息 | `GET /api/v1/sessions/{id}/messages?since=&end=&limit=&offset=`（ChatLab Pull，含 `sync.watermark`） |
 | 联系人 | `GET /api/v1/contacts?keyword=&limit=` |
 | 群成员画像 | `GET /api/v1/group-members?talker=<群id>`（含 `isOwner`/`messageCount`） |
 | 朋友圈时间线 / 统计 | `GET /api/v1/sns/timeline?limit=` · `GET /api/v1/sns/export/stats` |
 
 ## 谨慎用（实测不稳定）
-- `GET /api/v1/messages?talker=<id>` — 取消息。**最新消息**优先不带 `start/end`，直接 `limit=100`，返回数组按 `createTime` 降序理解，最新在索引 `0`；再用会话 `lastTimestamp` 与第一条消息 `createTime` 自检。**历史区间/批量回溯**才显式给 `start`/`end`（`YYYYMMDD`）。实时读库有竞态，返回 0 时先重试几次 / 换会话，不要直接结论为无消息。要标准化格式加 `&chatlab=1`，要媒体加 `&media=1`。
+- `GET|POST /api/v1/messages?talker=<id>` — 取消息。**最新消息**优先不带 `start/end`，直接 `limit=100`，返回数组按 `createTime` 降序理解，最新在索引 `0`；再用会话 `lastTimestamp` 与第一条消息 `createTime` 自检。需要复杂参数时可用 `POST` JSON body。保留 `replyToMessageId` / `quote` 供 AI 还原回复链；要媒体加 `&media=1`，但公开仓库只保存 `media_manifest`，不保存媒体。
+- **历史区间/批量回溯**优先用 ChatLab Pull：`GET /api/v1/sessions/{id}/messages?since=<unix>&end=<unix>&limit=5000&offset=0`，保留 `sync.hasMore` / `sync.nextSince` / `sync.nextOffset` / `sync.watermark`。只有需要 keyword、legacy JSON 或媒体导出时才回退 `/api/v1/messages?start=&end=`。实时读库有竞态，返回 0 时先重试几次 / 换会话，不要直接结论为无消息。
 
 ## 写操作 / 流（知道即可，别误调）
 - `POST /api/v1/sns/export`（导出）、`DELETE /api/v1/sns/post/{id}`（删朋友圈）、`POST /api/v1/sns/block-delete/{install,uninstall}`（防删钩子）。
@@ -51,7 +54,7 @@ curl -H "Authorization: Bearer $WEFLOW_TOKEN" "http://127.0.0.1:5031/api/v1/sess
 ```
 
 ## 典型流程
-`sessions` 定位会话 → 判断当前库 →（群聊先 `group-members` 拿成员画像）→ 最新消息用无日期 `messages?limit=100` 并做 `lastTimestamp` 自检，历史区间才加 `start/end` → 按 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md) 输出消费字段；朋友圈走 `sns/timeline` + `sns/export/stats`。
+`sessions` 定位会话 → 判断当前库 →（群聊先 `group-members` 拿成员画像）→ 最新消息用无日期 `messages?limit=100` 并做 `lastTimestamp` 自检 → 历史/批量读取用 ChatLab Pull → 按 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md) 输出 `request_method`、`endpoint_family`、`sync_watermark`、`media_manifest` 等消费字段；朋友圈走 `sns/timeline` + `sns/export/stats`。
 
 默认不要输出或保存完整原文。公开提交前按 [docs/privacy_boundary.md](docs/privacy_boundary.md) 检查，禁止提交 `.env`、token、raw messages、screenshots、database、exports 或媒体。
 
