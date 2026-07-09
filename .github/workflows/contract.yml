@@ -1,0 +1,28 @@
+name: Contract Verification
+
+on:
+  push:
+    branches:
+      - master
+      - "codex/**"
+  pull_request:
+
+jobs:
+  contract:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python contract tests
+        shell: powershell
+        run: python -m unittest tests/test_project_contracts.py
+
+      - name: Local CI verification
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools/test-ci-local.ps1

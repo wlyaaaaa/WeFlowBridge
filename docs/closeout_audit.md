@@ -2,13 +2,15 @@
 
 Audit date: 2026-07-07 China time (UTC+8)
 
-Status: `ready_for_normal_maintenance`
+Status: `ready_for_normal_maintenance` / AI Integration 1.0 ready
 
 ## Decision
 
 `E:\Projects\Tools\WeFlowBridge` is ready to close project construction and move into normal maintenance as a public-safe WeFlow data source adapter.
 
 The project is intentionally narrow. It owns endpoint notes, local health checks, watchdog scripts, privacy boundaries, and the AI consumer contract. It does not own raw WeChat archives, relationship analysis, career analysis, PersonalOS memory, durable vector indexes, or domain decisions.
+
+AI Integration 1.0 adds machine-readable OpenAPI/schema contracts, metadata-only JSON probing, local CI verification, and public-boundary scanning without changing the no-raw-WeChat-data boundary.
 
 ## Scope Reviewed
 
@@ -28,6 +30,7 @@ Run before considering this audit current:
 ```powershell
 python -m unittest E:\Projects\Tools\WeFlowBridge\tests\test_project_contracts.py
 git diff --check
+powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\tools\test-ci-local.ps1
 ```
 
 Optional local runtime probe, only when WeFlow/WeChat is intended to be running:
@@ -71,6 +74,7 @@ The project remains closed if all are true:
 
 1. `project_manifest.json` says `ready_for_normal_maintenance`.
 2. Entry docs link to manifest, consumer contract, privacy boundary, and this closeout audit.
-3. Contract tests pass.
-4. Public secret scan finds no token-looking values or private material.
-5. Any future change preserves the No Raw WeChat Data boundary.
+3. Machine contracts exist: `docs/openapi.yaml`, `schemas/ai-consumer-envelope.v2.schema.json`, and `schemas/project-manifest.v1.schema.json`.
+4. Contract tests and `tools/test-ci-local.ps1` pass.
+5. Public secret scan finds no token-looking values or private material.
+6. Any future change preserves the No Raw WeChat Data boundary.

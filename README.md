@@ -26,6 +26,7 @@
 - AI 调用层在 `E:\.agents\plugins\weflow-toolkit`（`weflow-toolkit v0.2+`），不在本仓库保存长期个人事实。
 - `PersonalOS`、`CareerCapital`、`SocialCapital`、`LifeCases` 等下游项目只应按需引用 WeFlow 证据，不吞完整微信库。
 - 机器可读项目边界见 [project_manifest.json](project_manifest.json)，给 AI 快速判断本项目“拥有什么 / 不拥有什么 / 怎么验收”。
+- 机器可读接口和输出契约见 [docs/openapi.yaml](docs/openapi.yaml)、[schemas/ai-consumer-envelope.v2.schema.json](schemas/ai-consumer-envelope.v2.schema.json) 和 [schemas/project-manifest.v1.schema.json](schemas/project-manifest.v1.schema.json)。
 - 项目收尾审计见 [docs/closeout_audit.md](docs/closeout_audit.md)，当前状态为 `ready_for_normal_maintenance`。
 - AI 消费契约见 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)。
 - 公开仓库隐私边界见 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
@@ -212,10 +213,12 @@ WeFlow API（26.7.3）的安全模型，**读源码后修正如下**（比早前
 ```powershell
 # 本机支持 PowerShell 7 Core (pwsh) 及 Windows PowerShell 5.1，运行：
 powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\probe-weflow.ps1
+powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\probe-weflow.ps1 -Json -Mode MetadataOnly -NoMessages
 python -m unittest E:\Projects\Tools\WeFlowBridge\tests\test_project_contracts.py
+powershell -ExecutionPolicy Bypass -File E:\Projects\Tools\WeFlowBridge\tools\test-ci-local.ps1
 ```
 脚本从 `.env` 读 base/token，依次探活 `/health`、`/sessions`、`/contacts`、`/group-members`、`/sns/export/stats`、`/messages`，报告服务是否在线、鉴权是否通过、各接口能否取到数据。脚本本身须为 **UTF-8 BOM** 编码，中文才不会乱码。
-契约测试会检查 [project_manifest.json](project_manifest.json)、入口文档链接和公开隐私忽略规则是否仍然闭合。
+`-Json -Mode MetadataOnly -NoMessages` 只输出 endpoint shape、计数、sync 是否存在和脱敏状态，不输出 raw talker、消息正文、token 或媒体路径。契约测试会检查 [project_manifest.json](project_manifest.json)、[docs/openapi.yaml](docs/openapi.yaml)、schema 文件、入口文档链接和公开隐私忽略规则是否仍然闭合。
 
 ---
 

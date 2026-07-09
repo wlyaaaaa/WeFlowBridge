@@ -4,6 +4,11 @@ This document defines how AI consumers should use `E:\Projects\Tools\WeFlowBridg
 
 Contract v2 is verified against WeFlow `26.7.3` / `26.7.3.0` on 2026-07-09. It keeps the older defensive `/api/v1/messages` rules, but adds the 7.3 API shapes that are better for AI integration: JSON-body `POST` calls, ChatLab Pull, incremental `sync` metadata, quote metadata, and explicit media manifests.
 
+Machine-readable companions:
+
+- HTTP API surface: [docs/openapi.yaml](openapi.yaml)
+- Envelope schema: [schemas/ai-consumer-envelope.v2.schema.json](../schemas/ai-consumer-envelope.v2.schema.json)
+
 ## Project Role
 
 `E:\Projects\Tools\WeFlowBridge` is the provider-facing adapter for local WeFlow data access. It owns public-safe endpoint notes, health checks, watchdog scripts, and the contract for AI consumers.

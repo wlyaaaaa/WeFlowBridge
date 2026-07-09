@@ -118,10 +118,14 @@
   "safe_verification": {
     "contract_tests": "python -m unittest tests/test_project_contracts.py",
     "probe_script": "powershell -ExecutionPolicy Bypass -File E:\\Projects\\Tools\\WeFlowBridge\\probe-weflow.ps1",
+    "metadata_only_probe": "powershell -ExecutionPolicy Bypass -File E:\\Projects\\Tools\\WeFlowBridge\\probe-weflow.ps1 -Json -Mode MetadataOnly -NoMessages",
+    "public_boundary": "powershell -ExecutionPolicy Bypass -File E:\\Projects\\Tools\\WeFlowBridge\\tools\\test-public-boundary.ps1",
+    "local_ci": "powershell -ExecutionPolicy Bypass -File E:\\Projects\\Tools\\WeFlowBridge\\tools\\test-ci-local.ps1",
     "powershell_parse_files": [
       "probe-weflow.ps1",
       "weflow_heartbeat.ps1",
-      "weflow_boot_guardian.ps1"
+      "weflow_boot_guardian.ps1",
+      "enable-autologin.ps1"
     ]
   },
   "no_raw_wechat_data": true

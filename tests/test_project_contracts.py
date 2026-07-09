@@ -287,6 +287,38 @@ class ProjectContractTests(unittest.TestCase):
         self.assertNotIn("Set-ItemProperty", script)
         self.assertNotIn("DefaultPassword", script)
 
+    def test_ci_workflow_and_docs_link_machine_contracts(self):
+        workflow = read_text(".github/workflows/contract.yml")
+        readme = read_text("README.md")
+        agents = read_text("AGENTS.md")
+        contract = read_text("docs/ai_consumer_contract.md")
+        closeout = read_text("docs/closeout_audit.md")
+        manifest = read_json("project_manifest.json")
+
+        workflow_terms = [
+            "windows-latest",
+            "python -m unittest tests/test_project_contracts.py",
+            "tools/test-ci-local.ps1",
+            "pull_request",
+            "push",
+        ]
+        for term in workflow_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, workflow)
+
+        linked_docs = (readme, agents, contract)
+        for text in linked_docs:
+            with self.subTest(document="machine_contract_links"):
+                self.assertIn("docs/openapi.yaml", text)
+                self.assertIn("schemas/ai-consumer-envelope.v2.schema.json", text)
+
+        self.assertIn("schemas/project-manifest.v1.schema.json", readme)
+        self.assertIn("AI Integration 1.0", closeout)
+        public_boundary_command = manifest["safe_verification"]["public_boundary"].replace("\\", "/")
+        local_ci_command = manifest["safe_verification"]["local_ci"].replace("\\", "/")
+        self.assertIn("tools/test-public-boundary.ps1", public_boundary_command)
+        self.assertIn("tools/test-ci-local.ps1", local_ci_command)
+
     def test_ai_docs_prefer_v2_toolkit_and_chatlab_history(self):
         readme = read_text("README.md")
         agents = read_text("AGENTS.md")
