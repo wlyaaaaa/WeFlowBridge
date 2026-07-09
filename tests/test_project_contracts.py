@@ -117,6 +117,37 @@ class ProjectContractTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, contract)
 
+    def test_ai_docs_prefer_v2_toolkit_and_chatlab_history(self):
+        readme = read_text("README.md")
+        agents = read_text("AGENTS.md")
+        contract = read_text("docs/ai_consumer_contract.md")
+
+        for text in (readme, agents):
+            with self.subTest(document="entrypoint"):
+                self.assertIn("weflow-toolkit v0.2+", text)
+                self.assertIn("/api/v1/sessions/{id}/messages", text)
+                self.assertIn("ChatLab Pull", text)
+                self.assertIn("最新消息：不带 start/end", text)
+
+        forbidden_preferred_examples = [
+            "历史区间：显式 start/end",
+            "历史区间显式 `start/end`",
+            "chatlab=1&limit=20",
+            "chatlab=1, \"limit\": 100",
+            "safe local path hints",
+            "api-media",
+            "wxid_xxx/images",
+            "mediaPath",
+        ]
+        for term in forbidden_preferred_examples:
+            with self.subTest(term=term):
+                self.assertNotIn(term, readme)
+                self.assertNotIn(term, agents)
+                self.assertNotIn(term, contract)
+
+        self.assertIn("raw media paths", contract)
+        self.assertIn("non-path", contract)
+
     def test_privacy_boundary_exists_and_blocks_private_material(self):
         text = read_text("docs/privacy_boundary.md")
 

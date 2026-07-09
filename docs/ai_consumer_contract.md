@@ -14,7 +14,7 @@ It does not own relationship analysis, career analysis, PersonalOS memory, raw m
 
 | Consumer | Allowed role | Not allowed |
 | --- | --- | --- |
-| `.agents` / `weflow-toolkit` | Call the local API, judge active library, normalize metadata, enforce privacy rules | Store raw chat history as durable project data |
+| `.agents` / `weflow-toolkit v0.2+` | Call the local API, judge active library, normalize metadata, enforce privacy rules | Store raw chat history as durable project data |
 | `PersonalOS` | Register WeChat history as an available data source | Copy full chat exports or maintain duplicate WeFlow state |
 | `CareerCapital` | Query work-related conversations when a task needs evidence | Own family, romance, or unrelated social facts |
 | `SocialCapital` | Query relationship, family, romance, and friend context when needed | Own career negotiation or salary facts |
@@ -30,8 +30,8 @@ Any AI consumer that reads WeFlow messages must report or internally preserve th
 | `library_evidence` | One or two evidence strings used to judge the active library |
 | `target_account` | Account requested by the user, if any |
 | `target_conversation` | Human-readable target group or contact name |
-| `talker` | WeFlow conversation ID used for `/api/v1/messages` |
-| `time_window` | `latest`, or explicit `start/end` dates for historical reads |
+| `talker` | WeFlow conversation ID used for API calls; redact raw `wxid_...` and `...@chatroom` in public/user-facing output by default |
+| `time_window` | `latest`, or explicit `since/end/offset` pagination window for historical ChatLab Pull reads |
 | `retry_count` | Number of retries after empty or suspicious responses |
 | `message_count` | Number of messages returned in the final batch |
 | `lastTimestamp_matches_newest` | Whether `sessions.lastTimestamp` equals `messages[0].createTime` for latest reads |
@@ -39,7 +39,7 @@ Any AI consumer that reads WeFlow messages must report or internally preserve th
 | `request_method` | `GET` or `POST`; prefer `POST` when parameters are complex or contain many filters |
 | `endpoint_family` | `sessions`, `messages`, `chatlab_pull`, `group_members`, `sns`, or `push` |
 | `sync_watermark` | `sync.watermark` from ChatLab Pull, when present |
-| `media_manifest` | Metadata-only list of media fields or exported file counts; do not store media payloads in this repository |
+| `media_manifest` | Non-path metadata-only list of media fields or exported file counts; do not store media payloads or raw media paths in this repository |
 
 ## Retrieval Rules
 
@@ -72,7 +72,7 @@ JSON messages:
 
 1. `GET /api/v1/messages` and `POST /api/v1/messages` are both valid in WeFlow 26.7.3.
 2. Prefer `POST` with `Content-Type: application/json` for complex parameter sets.
-3. When media is requested, keep only a `media_manifest` in durable AI outputs: media type, counts, and safe local path hints when needed. Do not store media payloads here.
+3. When media is requested, keep only a non-path `media_manifest` in durable AI outputs: media type, counts, redacted sender role, timestamp, and size if available. Do not store media payloads or raw media paths here.
 4. Preserve `replyToMessageId` and `quote` for reply-aware summarization.
 
 Time handling:
@@ -106,7 +106,7 @@ If the requested account and active library do not match, do not present current
 Do not create a separate E-drive project just to manage WeFlow access. The current ownership is:
 
 - `E:\Projects\Tools\WeFlowBridge`: adapter, watchdog, public-safe docs, consumer contract.
-- `E:\.agents\plugins\weflow-toolkit`: AI calling skill and helper scripts.
+- `E:\.agents\plugins\weflow-toolkit` (`weflow-toolkit v0.2+`): AI calling skill and helper scripts.
 - Downstream projects: task-specific analysis and decisions.
 
 Create a new private project only if there is a future need for a durable WeChat archive, vector index, relationship knowledge base, or large-scale export pipeline.

@@ -23,7 +23,7 @@
 ### 项目边界
 
 - 本仓库是 `E:\Projects\Tools\WeFlowBridge`，负责 WeFlow API 适配、公开安全文档、自检和看门狗。
-- AI 调用层在 `E:\.agents\plugins\weflow-toolkit`，不在本仓库保存长期个人事实。
+- AI 调用层在 `E:\.agents\plugins\weflow-toolkit`（`weflow-toolkit v0.2+`），不在本仓库保存长期个人事实。
 - `PersonalOS`、`CareerCapital`、`SocialCapital`、`LifeCases` 等下游项目只应按需引用 WeFlow 证据，不吞完整微信库。
 - 机器可读项目边界见 [project_manifest.json](project_manifest.json)，给 AI 快速判断本项目“拥有什么 / 不拥有什么 / 怎么验收”。
 - 项目收尾审计见 [docs/closeout_audit.md](docs/closeout_audit.md)，当前状态为 `ready_for_normal_maintenance`。
@@ -37,13 +37,13 @@
 | 场景 | 怎么实现 |
 |------|----------|
 | **检索某人/某群的聊天记录** | `GET /api/v1/messages?talker=<id>`，支持时间范围、关键词、分页 |
-| **让 AI 总结/分析一段对话** | 拉 `chatlab=1` 标准格式 → 直接喂给模型做摘要、情绪、画像 |
+| **让 AI 总结/分析一段对话** | 通过 `weflow-toolkit v0.2+` 拉 metadata-first envelope；历史/批量优先 ChatLab Pull |
 | **列出所有会话 / 找某个会话** | `GET /api/v1/sessions?keyword=工作群` |
 | **给 AI/ChatLab 做增量读取** | `GET /api/v1/sessions?format=chatlab` → `GET /api/v1/sessions/{id}/messages`（ChatLab Pull，含 `sync` 游标） |
 | **导出联系人** | `GET /api/v1/contacts?keyword=张三` |
 | **群成员画像（谁是群主/发言量）** | `GET /api/v1/group-members?talker=<群id>`，含 `isOwner`/`messageCount` 等 |
 | **读/分析朋友圈** | `GET /api/v1/sns/timeline`（含点赞、评论、定位）+ `GET /api/v1/sns/export/stats` |
-| **拿到图片/语音/视频文件** | 查询时 `media=1` 导出，再用 `/api/v1/media/...` 取文件 |
+| **识别图片/语音/视频等媒体存在** | 默认只保留 non-path `media_manifest`（类型、数量、时间、大小等），不把媒体路径或 payload 写入 AI 持久输出 |
 | **健康检查 / 服务是否在线** | `GET /health` |
 
 一句话：**它把"我的微信历史 + 朋友圈"变成一个 AI 可读的本地数据源**——可以做检索、摘要、年度报告、双人关系分析、群画像、朋友圈分析、媒体提取等。
@@ -85,24 +85,22 @@
 | `keyword` | ❌ | 按消息显示文本过滤 |
 | `chatlab` | ❌ | `1` = 输出 ChatLab 格式 |
 | `format` | ❌ | `json`（默认）或 `chatlab` |
-| `media` | ❌ | `1` = 同时导出媒体并返回路径；`0` = 占位符；兼容别名 `meiti` |
+| `media` | ❌ | `1` = 触发本机媒体导出并在原始响应里包含本机引用；AI 持久输出只保留 non-path `media_manifest` |
 | `image`/`voice`/`video`/`emoji` | ❌ | `media=1` 时分别控制各类媒体导出（`1/0`）；`image` 兼容 `tupian`，`voice` 兼容 `vioce` |
 
-媒体默认导出到（**实测**）`%APPDATA%\weflow\cache\api-media`。
+媒体导出目录属于本机私有缓存。公开文档、AI 回答、提交记录和长期产物不得保存媒体路径或 payload，只保留 non-path `media_manifest`。
 
-> ⚠️ **实测必读**：`/messages` 有两种稳定用法。取**最新消息**时不要依赖日期窗口，直接 `GET /api/v1/messages?talker=<id>&limit=100`，把返回数组按 `createTime` 降序理解，最新在索引 `0`，并用会话 `lastTimestamp` 与第一条消息 `createTime` 对齐自检。取**历史区间/批量回溯**时再显式给 `start`/`end`（如 `start=20250101&end=20261231`）。返回 0 可能是实时读库竞态，需重试，不要直接判断为无消息。
+> ⚠️ **实测必读**：`/messages` 有两种稳定用法。**最新消息：不带 start/end**，直接 `GET /api/v1/messages?talker=<id>&limit=100`，把返回数组按 `createTime` 降序理解，最新在索引 `0`，并用会话 `lastTimestamp` 与第一条消息 `createTime` 对齐自检。历史区间/批量回溯优先用 ChatLab Pull：`GET /api/v1/sessions/{id}/messages?since=<unix>&end=<unix>&limit=<n>&offset=<n>`。只有需要 legacy JSON、关键词或媒体导出参数时才回退 `start`/`end`。返回 0 可能是实时读库竞态，需重试，不要直接判断为无消息。
 
 **示例**
 ```
 GET /api/v1/messages?talker=wxid_xxx&limit=50
-GET /api/v1/messages?talker=wxid_xxx&chatlab=1
-GET /api/v1/messages?talker=wxid_xxx&start=20260101&end=20260205&limit=100
+GET /api/v1/sessions/{id}/messages?since=1760000000&end=1760003600&limit=5000&offset=0
 GET /api/v1/messages?talker=wxid_xxx&keyword=项目进度&limit=50
-GET /api/v1/messages?talker=wxid_xxx&media=1&image=1&voice=1&video=0&emoji=0
 ```
 
-### `GET /api/v1/media/{relativePath}` — 取已导出的媒体
-例：`/api/v1/media/wxid_xxx/images/image_123.jpg`。需先用 `media=1` 导出才能访问。支持 png/jpg/gif/webp/wav/mp3/mp4。
+### 媒体导出安全边界
+WeFlow 有低层媒体取回能力，但 AI 集成默认不调用、不展示、不持久化媒体 payload 或本机路径。需要知道某批消息是否含图片、语音、视频、文件或表情时，只记录 `media_manifest` 的非路径元数据。
 
 ### ChatLab Pull — AI 增量读取优先入口
 WeFlow `26.7.3` 支持 ChatLab Pull 形态，适合 AI 做批量或增量读取：
@@ -112,7 +110,7 @@ GET /api/v1/sessions?format=chatlab
 GET /api/v1/sessions/{id}/messages?since=<unix_seconds>&end=<unix_seconds>&limit=5000&offset=0
 ```
 
-`/api/v1/sessions/{id}/messages` 返回 `chatlab`、`meta`、`members`、`messages` 和 `sync`。AI 调用层应保留 `sync.hasMore`、`sync.nextSince`、`sync.nextOffset`、`sync.watermark`；消息字段里重点保留 `platformMessageId`、`replyToMessageId`、`quote`、`mediaPath` 等元数据。公开仓库不得保存完整 transcript、媒体文件或 raw JSON 导出。
+`/api/v1/sessions/{id}/messages` 返回 `chatlab`、`meta`、`members`、`messages` 和 `sync`。AI 调用层应保留 `sync.hasMore`、`sync.nextSince`、`sync.nextOffset`、`sync.watermark`；消息字段里重点保留 `platformMessageId`、`replyToMessageId`、`quote` 以及 non-path `media_manifest`。公开仓库不得保存完整 transcript、媒体文件、媒体路径或 raw JSON 导出。
 
 ### ChatLab 消息类型映射
 `0` 文本 · `1` 图片 · `2` 语音 · `3` 视频 · `4` 文件 · `5` 表情 · `7` 链接 · `8` 位置 · `20` 红包 · `21` 转账 · `23` 通话 · `80` 系统 · `81` 撤回 · `99` 其他
@@ -121,7 +119,7 @@ GET /api/v1/sessions/{id}/messages?since=<unix_seconds>&end=<unix_seconds>&limit
 
 ## 4. 给 AI / 主脑 / Cline 的接入说明
 
-**绝不要把 token / 密钥 / wxid 写进代码或仓库**。一律从本地 `.env` 读：
+**绝不要把 token / 密钥 / wxid 写进代码或仓库**。一律从本地 `.env` 读。推荐实际调用层是 `E:\.agents\plugins\weflow-toolkit`（`weflow-toolkit v0.2+`），它默认输出 AI Consumer Contract v2 envelope，并默认脱敏 raw `wxid_...` / `...@chatroom`：
 
 AI 消费者必须遵守 [docs/ai_consumer_contract.md](docs/ai_consumer_contract.md)：先判断当前 WeFlow 库，最新消息不带 `start/end`，历史/大批量读取优先用 ChatLab Pull，输出或内部保留 `current_library`、`target_conversation`、`talker`、`time_window`、`retry_count`、`message_count`、`lastTimestamp_matches_newest`、`request_method`、`endpoint_family`、`sync_watermark` 等字段。隐私与公开提交红线见 [docs/privacy_boundary.md](docs/privacy_boundary.md)。
 
@@ -133,7 +131,10 @@ $headers = @{}; if ($cfg['WEFLOW_TOKEN']) { $headers['Authorization'] = "Bearer 
 
 Invoke-RestMethod "$base/health" -Headers $headers
 Invoke-RestMethod "$base/api/v1/sessions?limit=5" -Headers $headers
-Invoke-RestMethod "$base/api/v1/messages?talker=wxid_xxx&chatlab=1&limit=20" -Headers $headers
+# 最新消息：不带 start/end
+Invoke-RestMethod "$base/api/v1/messages?talker=<会话ID>&limit=100" -Headers $headers
+# 历史/批量：优先 ChatLab Pull
+Invoke-RestMethod "$base/api/v1/sessions/<会话ID>/messages?since=1760000000&end=1760003600&limit=5000&offset=0" -Headers $headers
 ```
 
 ```python
@@ -141,8 +142,10 @@ Invoke-RestMethod "$base/api/v1/messages?talker=wxid_xxx&chatlab=1&limit=20" -He
 import os, requests
 base = os.environ["WEFLOW_BASE_URL"]
 h = {"Authorization": f"Bearer {os.environ['WEFLOW_TOKEN']}"} if os.environ.get("WEFLOW_TOKEN") else {}
-msgs = requests.get(f"{base}/api/v1/messages",
-                    params={"talker": "wxid_xxx", "chatlab": 1, "limit": 100}, headers=h).json()
+latest = requests.get(f"{base}/api/v1/messages",
+                      params={"talker": "<会话ID>", "limit": 100}, headers=h).json()
+history = requests.get(f"{base}/api/v1/sessions/<会话ID>/messages",
+                       params={"since": 1760000000, "end": 1760003600, "limit": 5000, "offset": 0}, headers=h).json()
 ```
 
 > **实测（2026-06-20）**：本机这版 WeFlow 对**数据接口强制鉴权** —— 不带 token 返回 `401`。`/health` 例外（无需 token）。缺 `talker` 返回 `400`。
@@ -160,9 +163,9 @@ msgs = requests.get(f"{base}/api/v1/messages",
 | `/health`、`/api/v1/health` | GET | ✅ 稳定 | `{"status":"ok"}`，**无需 token** |
 | `/api/v1/sessions` | GET/POST | ✅ 稳定 | 会话列表：`username`/`displayName`/`type`/`sessionType`/`lastTimestamp`/`unreadCount`；`format=chatlab` 返回 ChatLab Pull 会话索引 |
 | `/api/v1/contacts` | GET/POST | ✅ 稳定 | 联系人：`username`/`displayName`/`nickname`/`remark`/`alias`/`avatarUrl`/`type` |
-| `/api/v1/messages?talker=` | GET/POST | ⚠️ 通但不稳 | 消息；最新消息不带 `start/end` 并用 `lastTimestamp` 自检，历史区间显式 `start/end`，结果时有时无（见下）；支持 `replyToMessageId`/`quote` 和媒体别名 |
+| `/api/v1/messages?talker=` | GET/POST | ⚠️ 通但不稳 | 消息；最新消息不带 `start/end` 并用 `lastTimestamp` 自检；历史/批量优先 ChatLab Pull，`start/end` 只作 legacy JSON、关键词或媒体导出 fallback；支持 `replyToMessageId`/`quote` 和媒体别名 |
 | `/api/v1/sessions/{id}/messages` | GET | ✅ ChatLab Pull | AI 增量读取优先入口；返回 `chatlab`/`meta`/`members`/`messages`/`sync`，含 `sync.watermark` |
-| `/api/v1/media/{path}` | GET | ✅ 端点确认 | 取已导出媒体；带**目录穿越防护**（路径越界→403）。受 `/messages` 不稳定拖累没稳定捞到样本去取文件 |
+| 媒体取回低层端点 | GET | ✅ 端点确认 | 可取已导出媒体，带目录穿越防护；AI durable output 默认不得保存媒体 payload 或本机路径 |
 | `/api/v1/group-members?chatroomId=<群id>` | GET/POST | ✅ 实测可用 | 群成员：`success`/`chatroomId`/`count`/`fromCache`/`updatedAt`/`members[]`；`talker` 仍兼容；可用 `includeMessageCounts`/`withCounts` |
 | `/api/v1/sns/timeline?limit=` | GET | ✅ 实测可用 | 朋友圈时间线：`{success,count,timeline[]}`；支持 `usernames`/`keyword`/`start`/`end`/`media`/`replace`/`inline` |
 | `/api/v1/sns/post/{id}` | **DELETE** | 写操作（GET→405） | **删除**一条朋友圈 |
@@ -181,7 +184,7 @@ msgs = requests.get(f"{base}/api/v1/messages",
 >
 > **已实测验证（2026-06-20）**：开启「主动推送」后再连同一地址，返回从 `403` 变为 `HTTP 200 / Content-Type: text/event-stream`，首段 `event: ready` + `data: {"success":true,"stream":"…/api/v1/push/messages"}` —— 与源码完全一致。用浏览器 `EventSource` 连 `http://127.0.0.1:5031/api/v1/push/messages?access_token=<token>` 即可持续收流。
 
-> **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 取最新消息时不带日期，直接 `limit=100`，取返回数组前 N 条，并用 `sessions.lastTimestamp` 对齐自检；② 取历史区间/批量回溯时显式给 `start`/`end`；③ 返回 0 或失败时**重试几次**；④ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；⑤ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
+> **⚠️ 已知问题（`/messages` 不稳定）**：WeFlow 是"实时读库、无中间解密库"的架构，消息索引疑似惰性/有竞态——相同调用可能这次有数据、下次为 0（实测同一会话在 50 条 / 0 条之间跳）。**建议**：① 取最新消息时不带日期，直接 `limit=100`，取返回数组前 N 条，并用 `sessions.lastTimestamp` 对齐自检；② 历史区间/批量回溯优先用 ChatLab Pull `/api/v1/sessions/{id}/messages`；③ 返回 0 或失败时**重试几次**；④ 批量分析前先用 `probe-weflow.ps1` 确认当前能否取到消息；⑤ 优先依赖 `sessions`/`contacts`/`group-members`/`sns/*` 这些实测稳定的接口。
 
 **典型 Agent 工作流**：`/api/v1/sessions` 找会话并记录 `lastTimestamp` →（群聊可 `/api/v1/group-members` 拿成员画像）→ 最新消息用 `/api/v1/messages?talker=...&limit=100` 并做对齐自检 → 历史/大批量读取优先用 ChatLab Pull：`/api/v1/sessions/{id}/messages?since=...&end=...&limit=5000`，保留 `sync` 游标 → 需要关键词或媒体时再用 `/api/v1/messages` 的 legacy JSON 参数 → 朋友圈分析走 `/api/v1/sns/timeline` + `/sns/export/stats`。
 
@@ -189,7 +192,7 @@ msgs = requests.get(f"{base}/api/v1/messages",
 
 ## 5. 安全模型与红线 ⚠️
 
-WeFlow API（26.5.27）的安全模型，**读源码后修正如下**（比早前判断要好，但仍需谨慎）：
+WeFlow API（26.7.3）的安全模型，**读源码后修正如下**（比早前判断要好，但仍需谨慎）：
 
 1. **只绑定 `127.0.0.1`**——绝不要用端口转发 / 反代 / `0.0.0.0` 把它暴露到局域网或公网。一旦暴露，等于把全部微信记录裸奔。
 2. **数据接口强制 token**——除 `/health` 外都要 `Bearer`/`access_token`，无 token 一律 `401`。这是主要防线。
