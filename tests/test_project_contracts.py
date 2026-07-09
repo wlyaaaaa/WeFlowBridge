@@ -261,6 +261,32 @@ class ProjectContractTests(unittest.TestCase):
         self.assertNotIn("Set-ItemProperty", public_boundary)
         self.assertNotIn("Start-Process", public_boundary)
 
+    def test_probe_weflow_supports_metadata_only_json_mode(self):
+        script = read_text("probe-weflow.ps1")
+
+        required_terms = [
+            "[switch]$Json",
+            "[ValidateSet('MetadataOnly','FullProbe')]",
+            "[switch]$NoMessages",
+            "schema_version",
+            "weflow-probe.v1",
+            "weflow_baseline",
+            "base_url_redacted",
+            "token_present",
+            "endpoint_results",
+            "message_text_printed",
+            "raw_media_paths_included",
+            "token_printed",
+            "ConvertTo-Json",
+        ]
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, script)
+
+        self.assertNotIn("Register-ScheduledTask", script)
+        self.assertNotIn("Set-ItemProperty", script)
+        self.assertNotIn("DefaultPassword", script)
+
     def test_ai_docs_prefer_v2_toolkit_and_chatlab_history(self):
         readme = read_text("README.md")
         agents = read_text("AGENTS.md")
