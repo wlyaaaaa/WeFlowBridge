@@ -1,12 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/wlyaaaaa/WeFlowBridge/schemas/project-manifest.v1.schema.json",
+  "$id": "https://github.com/wlyaaaaa/wechat-history-ai-bridge/schemas/project-manifest.v1.schema.json",
   "title": "WeFlowBridge Project Manifest v1",
   "type": "object",
   "additionalProperties": true,
   "required": [
     "schema",
     "project",
+    "display_name",
     "repository",
     "visibility",
     "role",
@@ -29,8 +30,11 @@
     "project": {
       "const": "WeFlowBridge"
     },
+    "display_name": {
+      "const": "微信聊天记录 AI 本地桥（WeChat History AI Bridge）"
+    },
     "repository": {
-      "const": "wlyaaaaa/WeFlowBridge"
+      "const": "wlyaaaaa/wechat-history-ai-bridge"
     },
     "visibility": {
       "const": "public"

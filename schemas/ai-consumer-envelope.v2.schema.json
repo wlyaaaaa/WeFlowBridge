@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/wlyaaaaa/WeFlowBridge/schemas/ai-consumer-envelope.v2.schema.json",
+  "$id": "https://github.com/wlyaaaaa/wechat-history-ai-bridge/schemas/ai-consumer-envelope.v2.schema.json",
   "title": "WeFlowBridge AI Consumer Envelope v2",
   "type": "object",
   "additionalProperties": false,

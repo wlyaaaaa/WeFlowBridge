@@ -31,28 +31,27 @@ def assert_public_safe_text(testcase: unittest.TestCase, text: str) -> None:
 
 
 class ProjectContractTests(unittest.TestCase):
-    def test_readme_is_star_optimized_for_public_ai_agent_users(self):
+    def test_readme_targets_chinese_wechat_history_ai_users(self):
         readme = read_text("README.md")
 
         required_terms = [
-            "Local-first WeChat API bridge for AI agents",
-            "Why this exists",
-            "What you get",
-            "What this repository never stores",
-            "Quickstart",
-            "OpenAPI",
-            "JSON Schema",
-            "privacy guardrails",
-            "WeFlow 26.7.3",
+            "微信聊天记录 AI 本地桥（WeChat History AI Bridge）",
+            "想让 AI 安全读取、检索和总结本地微信聊天记录",
+            "微信聊天记录怎么导出",
+            "微信群聊天记录怎么总结",
+            "WeFlow 负责本地读取微信数据",
+            "WeFlowBridge 负责把它整理成 AI 友好的安全接口",
+            "English: Local-first WeChat chat history bridge for AI agents, powered by WeFlow.",
         ]
         for term in required_terms:
             with self.subTest(term=term):
                 self.assertIn(term, readme)
 
         first_screen = readme[:1800]
-        self.assertIn("local-first", first_screen.lower())
-        self.assertIn("AI agents", first_screen)
-        self.assertIn("WeChat", first_screen)
+        self.assertIn("微信聊天记录", first_screen)
+        self.assertIn("AI", first_screen)
+        self.assertIn("WeFlow", first_screen)
+        self.assertNotIn("Local-first WeChat API bridge for AI agents", first_screen)
         self.assertNotIn("私有，供 AI 集成", first_screen)
         self.assertNotIn("给我（主脑）", first_screen)
 
@@ -60,6 +59,11 @@ class ProjectContractTests(unittest.TestCase):
         manifest = read_json("project_manifest.json")
 
         self.assertEqual(manifest["project"], "WeFlowBridge")
+        self.assertEqual(
+            manifest["display_name"],
+            "微信聊天记录 AI 本地桥（WeChat History AI Bridge）",
+        )
+        self.assertEqual(manifest["repository"], "wlyaaaaa/wechat-history-ai-bridge")
         self.assertEqual(manifest["visibility"], "public")
         self.assertEqual(manifest["role"], "provider_facing_adapter")
         self.assertEqual(manifest["closeout_status"], "ready_for_normal_maintenance")
@@ -210,6 +214,10 @@ class ProjectContractTests(unittest.TestCase):
         example = read_json("docs/examples/ai_consumer_envelope.example.json")
 
         self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(
+            schema["$id"],
+            "https://github.com/wlyaaaaa/wechat-history-ai-bridge/schemas/ai-consumer-envelope.v2.schema.json",
+        )
         self.assertEqual(schema["title"], "WeFlowBridge AI Consumer Envelope v2")
         self.assertFalse(schema["additionalProperties"])
         required = set(schema["required"])
@@ -251,7 +259,20 @@ class ProjectContractTests(unittest.TestCase):
         manifest = read_json("project_manifest.json")
 
         self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(
+            schema["$id"],
+            "https://github.com/wlyaaaaa/wechat-history-ai-bridge/schemas/project-manifest.v1.schema.json",
+        )
         self.assertEqual(schema["title"], "WeFlowBridge Project Manifest v1")
+        self.assertIn("display_name", schema["required"])
+        self.assertEqual(
+            schema["properties"]["display_name"]["const"],
+            "微信聊天记录 AI 本地桥（WeChat History AI Bridge）",
+        )
+        self.assertEqual(
+            schema["properties"]["repository"]["const"],
+            "wlyaaaaa/wechat-history-ai-bridge",
+        )
         self.assertIn("machine_contracts", schema["required"])
         self.assertIn("integration_readiness", schema["required"])
         for key in manifest["machine_contracts"]:
