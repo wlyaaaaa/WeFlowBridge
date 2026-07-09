@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wlyaaaaa/WeFlowBridge/schemas/project-manifest.v1.schema.json",
+  "title": "WeFlowBridge Project Manifest v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "project",
+    "repository",
+    "visibility",
+    "role",
+    "closeout_status",
+    "weflow_baseline",
+    "ai_contract_version",
+    "integration_readiness",
+    "machine_contracts",
+    "privacy_forbidden",
+    "required_output_envelope",
+    "ai_contract_v2_fields",
+    "retrieval_rules",
+    "safe_verification",
+    "no_raw_wechat_data"
+  ],
+  "properties": {
+    "schema": {
+      "const": "weflowbridge.project_manifest.v1"
+    },
+    "project": {
+      "const": "WeFlowBridge"
+    },
+    "repository": {
+      "const": "wlyaaaaa/WeFlowBridge"
+    },
+    "visibility": {
+      "const": "public"
+    },
+    "role": {
+      "const": "provider_facing_adapter"
+    },
+    "closeout_status": {
+      "const": "ready_for_normal_maintenance"
+    },
+    "weflow_baseline": {
+      "type": "object",
+      "required": ["version", "product_version", "verified_on", "requires_reprobe_after_version_change"],
+      "properties": {
+        "version": {
+          "const": "26.7.3"
+        },
+        "product_version": {
+          "const": "26.7.3.0"
+        },
+        "verified_on": {
+          "const": "2026-07-09"
+        },
+        "requires_reprobe_after_version_change": {
+          "const": true
+        }
+      }
+    },
+    "ai_contract_version": {
+      "const": "v2"
+    },
+    "integration_readiness": {
+      "type": "object",
+      "required": ["status", "release_tag", "completed_on", "definition"],
+      "properties": {
+        "status": {
+          "const": "ai_integration_1_0_ready"
+        },
+        "release_tag": {
+          "const": "v0.1.0"
+        },
+        "completed_on": {
+          "const": "2026-07-09"
+        },
+        "definition": {
+          "type": "string"
+        }
+      }
+    },
+    "machine_contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "openapi",
+        "ai_consumer_envelope_schema",
+        "project_manifest_schema",
+        "ai_consumer_envelope_example"
+      ],
+      "properties": {
+        "openapi": {
+          "const": "docs/openapi.yaml"
+        },
+        "ai_consumer_envelope_schema": {
+          "const": "schemas/ai-consumer-envelope.v2.schema.json"
+        },
+        "project_manifest_schema": {
+          "const": "schemas/project-manifest.v1.schema.json"
+        },
+        "ai_consumer_envelope_example": {
+          "const": "docs/examples/ai_consumer_envelope.example.json"
+        }
+      }
+    },
+    "no_raw_wechat_data": {
+      "const": true
+    }
+  }
+}

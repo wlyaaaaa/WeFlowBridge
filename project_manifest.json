@@ -16,6 +16,18 @@
     "requires_reprobe_after_version_change": true
   },
   "ai_contract_version": "v2",
+  "integration_readiness": {
+    "status": "ai_integration_1_0_ready",
+    "release_tag": "v0.1.0",
+    "completed_on": "2026-07-09",
+    "definition": "public-safe machine contracts, CI/local verification, metadata-only probe mode, and versioned release anchor"
+  },
+  "machine_contracts": {
+    "openapi": "docs/openapi.yaml",
+    "ai_consumer_envelope_schema": "schemas/ai-consumer-envelope.v2.schema.json",
+    "project_manifest_schema": "schemas/project-manifest.v1.schema.json",
+    "ai_consumer_envelope_example": "docs/examples/ai_consumer_envelope.example.json"
+  },
   "owns": [
     "public_safe_endpoint_notes",
     "health_checks",

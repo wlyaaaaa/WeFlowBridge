@@ -1,0 +1,46 @@
+{
+  "schema_version": "ai-consumer-envelope.v2",
+  "current_library": "example-library",
+  "library_evidence": [
+    "metadata-only probe returned expected session shape",
+    "active account label matched user request"
+  ],
+  "target_account": "example-account",
+  "target_conversation": "<redacted:conversation>",
+  "talker": "<redacted:chatroom>",
+  "time_window": {
+    "since": 1760000000,
+    "end": 1760003600,
+    "offset": 0
+  },
+  "retry_count": 0,
+  "message_count": 3,
+  "lastTimestamp_matches_newest": true,
+  "content_scope": "metadata_with_threading",
+  "request_method": "GET",
+  "endpoint_family": "chatlab_pull",
+  "sync_watermark": "example-watermark",
+  "media_manifest": [
+    {
+      "kind": "image",
+      "count": 1,
+      "timestamp": 1760000100,
+      "size": 12345,
+      "sender_role": "participant"
+    }
+  ],
+  "reply_metadata": [
+    {
+      "platformMessageId": "example-message-2",
+      "replyToMessageId": "example-message-1",
+      "quote_present": true,
+      "quote_message_id": "example-message-1"
+    }
+  ],
+  "message_content_included": false,
+  "privacy": {
+    "redacted": true,
+    "raw_messages_included": false,
+    "raw_media_paths_included": false
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wlyaaaaa/WeFlowBridge/schemas/ai-consumer-envelope.v2.schema.json",
+  "title": "WeFlowBridge AI Consumer Envelope v2",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "current_library",
+    "library_evidence",
+    "target_account",
+    "target_conversation",
+    "talker",
+    "time_window",
+    "retry_count",
+    "message_count",
+    "lastTimestamp_matches_newest",
+    "content_scope",
+    "request_method",
+    "endpoint_family",
+    "sync_watermark",
+    "media_manifest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ai-consumer-envelope.v2"
+    },
+    "current_library": {
+      "type": ["string", "null"]
+    },
+    "library_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target_account": {
+      "type": "string"
+    },
+    "target_conversation": {
+      "type": "string",
+      "description": "Redacted or display-safe conversation label."
+    },
+    "talker": {
+      "type": "string",
+      "pattern": "^<redacted:[a-z_]+>$|^$",
+      "description": "Raw wxid/chatroom values are not valid for public durable output."
+    },
+    "time_window": {
+      "oneOf": [
+        {
+          "const": "latest"
+        },
+        {
+          "type": "object",
+          "required": ["since", "end"],
+          "properties": {
+            "since": {
+              "type": ["integer", "null"]
+            },
+            "end": {
+              "type": ["integer", "null"]
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "message_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastTimestamp_matches_newest": {
+      "type": ["boolean", "null"]
+    },
+    "content_scope": {
+      "type": "string",
+      "enum": ["metadata_only", "metadata_with_threading", "aggregate_only"]
+    },
+    "request_method": {
+      "type": "string",
+      "enum": ["GET", "POST"]
+    },
+    "endpoint_family": {
+      "type": "string",
+      "enum": ["messages", "chatlab_pull", "sessions", "contacts", "group_members", "sns", "health"]
+    },
+    "sync_watermark": {
+      "type": ["string", "null"]
+    },
+    "media_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "count"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": ["integer", "null"]
+          },
+          "size": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "sender_role": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "message_content_included": {
+      "type": "boolean",
+      "const": false
+    },
+    "reply_metadata": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platformMessageId": {
+            "type": ["string", "null"]
+          },
+          "replyToMessageId": {
+            "type": ["string", "null"]
+          },
+          "quote_present": {
+            "type": "boolean"
+          },
+          "quote_message_id": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["redacted", "raw_messages_included", "raw_media_paths_included"],
+      "properties": {
+        "redacted": {
+          "type": "boolean",
+          "const": true
+        },
+        "raw_messages_included": {
+          "type": "boolean",
+          "const": false
+        },
+        "raw_media_paths_included": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    }
+  }
+}

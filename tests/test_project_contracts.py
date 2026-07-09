@@ -1,5 +1,6 @@
 import unittest
 import json
+import re
 from pathlib import Path
 
 
@@ -12,6 +13,21 @@ def read_text(relative_path: str) -> str:
 
 def read_json(relative_path: str) -> dict:
     return json.loads(read_text(relative_path))
+
+
+def assert_public_safe_text(testcase: unittest.TestCase, text: str) -> None:
+    forbidden_patterns = [
+        r"WEFLOW_TOKEN\s*=",
+        r"WEFLOW_DB_KEY\s*=",
+        r"ghp_[A-Za-z0-9]{36}",
+        r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
+        r"wxid_[A-Za-z0-9_-]{8,}",
+        r"\d+@chatroom",
+        r"(?<![A-Za-z])[A-Za-z]:[\\/][^\s\"']+",
+    ]
+    for pattern in forbidden_patterns:
+        with testcase.subTest(pattern=pattern):
+            testcase.assertIsNone(re.search(pattern, text))
 
 
 class ProjectContractTests(unittest.TestCase):
@@ -116,6 +132,97 @@ class ProjectContractTests(unittest.TestCase):
         for term in required_contract_terms:
             with self.subTest(term=term):
                 self.assertIn(term, contract)
+
+    def test_machine_contract_files_exist_and_are_indexed(self):
+        manifest = read_json("project_manifest.json")
+
+        self.assertEqual(manifest["integration_readiness"]["status"], "ai_integration_1_0_ready")
+        self.assertEqual(manifest["integration_readiness"]["release_tag"], "v0.1.0")
+
+        machine_contracts = manifest["machine_contracts"]
+        expected_paths = {
+            "openapi": "docs/openapi.yaml",
+            "ai_consumer_envelope_schema": "schemas/ai-consumer-envelope.v2.schema.json",
+            "project_manifest_schema": "schemas/project-manifest.v1.schema.json",
+            "ai_consumer_envelope_example": "docs/examples/ai_consumer_envelope.example.json",
+        }
+        self.assertEqual(machine_contracts, expected_paths)
+
+        for relative_path in expected_paths.values():
+            with self.subTest(path=relative_path):
+                self.assertTrue((ROOT / relative_path).is_file())
+
+    def test_openapi_covers_ai_safe_weflow_surface(self):
+        openapi = read_text("docs/openapi.yaml")
+
+        required_terms = [
+            "openapi: 3.1.0",
+            "WeFlowBridge AI Integration API",
+            "/health:",
+            "/api/v1/sessions:",
+            "/api/v1/contacts:",
+            "/api/v1/messages:",
+            "/api/v1/sessions/{id}/messages:",
+            "/api/v1/group-members:",
+            "/api/v1/sns/timeline:",
+            "/api/v1/sns/export/stats:",
+            "/api/v1/push/messages:",
+            "bearerAuth:",
+            "x-weflowbridge-ai-preferred: true",
+            "x-weflowbridge-risk: write-operation",
+            "sync_watermark",
+            "media_manifest",
+        ]
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, openapi)
+
+        assert_public_safe_text(self, openapi)
+        self.assertNotIn("mediaPath", openapi)
+
+    def test_ai_envelope_schema_and_example_are_public_safe(self):
+        schema = read_json("schemas/ai-consumer-envelope.v2.schema.json")
+        example = read_json("docs/examples/ai_consumer_envelope.example.json")
+
+        self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(schema["title"], "WeFlowBridge AI Consumer Envelope v2")
+        required = set(schema["required"])
+        self.assertGreaterEqual(
+            required,
+            {
+                "current_library",
+                "library_evidence",
+                "target_account",
+                "target_conversation",
+                "talker",
+                "time_window",
+                "retry_count",
+                "message_count",
+                "lastTimestamp_matches_newest",
+                "content_scope",
+                "request_method",
+                "endpoint_family",
+                "sync_watermark",
+                "media_manifest",
+            },
+        )
+        self.assertEqual(example["schema_version"], "ai-consumer-envelope.v2")
+        self.assertEqual(example["talker"], "<redacted:chatroom>")
+        self.assertFalse(example["message_content_included"])
+        self.assertTrue(example["privacy"]["redacted"])
+        assert_public_safe_text(self, json.dumps(example, ensure_ascii=False))
+
+    def test_project_manifest_schema_tracks_current_manifest(self):
+        schema = read_json("schemas/project-manifest.v1.schema.json")
+        manifest = read_json("project_manifest.json")
+
+        self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(schema["title"], "WeFlowBridge Project Manifest v1")
+        self.assertIn("machine_contracts", schema["required"])
+        self.assertIn("integration_readiness", schema["required"])
+        for key in manifest["machine_contracts"]:
+            with self.subTest(contract_key=key):
+                self.assertIn(key, schema["properties"]["machine_contracts"]["required"])
 
     def test_ai_docs_prefer_v2_toolkit_and_chatlab_history(self):
         readme = read_text("README.md")

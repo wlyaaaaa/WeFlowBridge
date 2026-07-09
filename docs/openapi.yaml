@@ -1,0 +1,436 @@
+openapi: 3.1.0
+info:
+  title: WeFlowBridge AI Integration API
+  version: 0.1.0
+  summary: Public-safe AI-facing view of the local WeFlow 26.7.3 HTTP API.
+  description: >
+    This contract documents the stable WeFlowBridge integration surface for AI
+    consumers. It describes endpoint shapes, authentication, and privacy
+    boundaries. It is not a raw WeChat archive and does not define durable
+    storage for transcripts, media payloads, token values, or local paths.
+servers:
+  - url: http://127.0.0.1:5031
+    description: Local loopback WeFlow API service.
+security:
+  - bearerAuth: []
+tags:
+  - name: health
+  - name: sessions
+  - name: contacts
+  - name: messages
+  - name: groups
+  - name: sns
+  - name: push
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Check local service health.
+      security: []
+      responses:
+        "200":
+          description: Service is reachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/sessions:
+    get:
+      tags: [sessions]
+      summary: List or search conversations.
+      x-weflowbridge-ai-preferred: true
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - $ref: "#/components/parameters/Limit"
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, chatlab]
+          description: Use `chatlab` for ChatLab Pull session index metadata.
+      responses:
+        "200":
+          description: Session metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionsResponse"
+    post:
+      tags: [sessions]
+      summary: List sessions with JSON body parameters.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListRequest"
+      responses:
+        "200":
+          description: Session metadata only.
+  /api/v1/contacts:
+    get:
+      tags: [contacts]
+      summary: Search contacts.
+      x-weflowbridge-ai-preferred: true
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Contact metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactsResponse"
+    post:
+      tags: [contacts]
+      summary: Search contacts with JSON body parameters.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListRequest"
+      responses:
+        "200":
+          description: Contact metadata only.
+  /api/v1/messages:
+    get:
+      tags: [messages]
+      summary: Read latest or legacy-filtered messages.
+      description: >
+        For latest reads, do not pass `start` or `end`; use `talker` and
+        `limit`, then compare the newest message create time with the session
+        `lastTimestamp`. For historical and bulk reads, prefer ChatLab Pull at
+        `/api/v1/sessions/{id}/messages`.
+      parameters:
+        - $ref: "#/components/parameters/Talker"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Keyword"
+        - name: start
+          in: query
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+          description: Legacy fallback only; do not use for latest reads.
+        - name: end
+          in: query
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+          description: Legacy fallback only; do not use for latest reads.
+        - name: media
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: Raw responses may include private media references; durable AI outputs keep only `media_manifest`.
+      responses:
+        "200":
+          description: Message metadata response. AI durable output must be normalized separately.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+    post:
+      tags: [messages]
+      summary: Read messages with JSON body parameters.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessagesRequest"
+      responses:
+        "200":
+          description: Message metadata response.
+  /api/v1/sessions/{id}/messages:
+    get:
+      tags: [messages]
+      summary: ChatLab Pull message read with sync metadata.
+      x-weflowbridge-ai-preferred: true
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Session id from `/api/v1/sessions`; redact in public output.
+        - name: since
+          in: query
+          schema:
+            type: integer
+          description: UTC epoch seconds.
+        - name: end
+          in: query
+          schema:
+            type: integer
+          description: UTC epoch seconds.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: ChatLab Pull payload with `sync_watermark` source fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLabPullResponse"
+  /api/v1/group-members:
+    get:
+      tags: [groups]
+      summary: Read group member metadata.
+      x-weflowbridge-ai-preferred: true
+      parameters:
+        - $ref: "#/components/parameters/Talker"
+        - name: includeMessageCounts
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Group member metadata only.
+    post:
+      tags: [groups]
+      summary: Read group member metadata with JSON body parameters.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Group member metadata only.
+  /api/v1/sns/timeline:
+    get:
+      tags: [sns]
+      summary: Read Moments timeline metadata.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Keyword"
+      responses:
+        "200":
+          description: Timeline metadata. Do not persist private text or media payloads here.
+  /api/v1/sns/export/stats:
+    get:
+      tags: [sns]
+      summary: Read Moments export statistics.
+      responses:
+        "200":
+          description: Aggregated statistics only.
+  /api/v1/sns/export:
+    post:
+      tags: [sns]
+      summary: Trigger Moments export.
+      x-weflowbridge-risk: write-operation
+      responses:
+        "200":
+          description: Export started by local user intent.
+  /api/v1/sns/post/{id}:
+    delete:
+      tags: [sns]
+      summary: Delete a Moments post.
+      x-weflowbridge-risk: write-operation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Delete operation result.
+  /api/v1/sns/block-delete/install:
+    post:
+      tags: [sns]
+      summary: Install local anti-delete hook.
+      x-weflowbridge-risk: write-operation
+      responses:
+        "200":
+          description: Hook installation result.
+  /api/v1/sns/block-delete/uninstall:
+    post:
+      tags: [sns]
+      summary: Uninstall local anti-delete hook.
+      x-weflowbridge-risk: write-operation
+      responses:
+        "200":
+          description: Hook removal result.
+  /api/v1/push/messages:
+    get:
+      tags: [push]
+      summary: Server-sent event stream for message push.
+      description: Browser EventSource must use query token because it cannot set headers.
+      parameters:
+        - name: access_token
+          in: query
+          schema:
+            type: string
+          description: Token value; never persist or print in public artifacts.
+      responses:
+        "200":
+          description: SSE stream containing message events and heartbeat comments.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "403":
+          description: Message push is disabled in WeFlow settings.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Keyword:
+      name: keyword
+      in: query
+      schema:
+        type: string
+      description: Search keyword; avoid writing private names into durable public artifacts.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10000
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+    Talker:
+      name: talker
+      in: query
+      required: true
+      schema:
+        type: string
+      description: Conversation identifier; redact in public output.
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    ListRequest:
+      type: object
+      properties:
+        keyword:
+          type: string
+        limit:
+          type: integer
+    Session:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        type:
+          type: string
+        sessionType:
+          type: string
+        lastTimestamp:
+          type: integer
+        unreadCount:
+          type: integer
+    SessionsResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        count:
+          type: integer
+        total:
+          type: integer
+    ContactsResponse:
+      type: object
+      properties:
+        contacts:
+          type: array
+          items:
+            type: object
+        count:
+          type: integer
+    MessagesRequest:
+      type: object
+      properties:
+        talker:
+          type: string
+        limit:
+          type: integer
+        offset:
+          type: integer
+        keyword:
+          type: string
+        media:
+          type: integer
+    MessagesResponse:
+      type: object
+      description: Raw message response; normalize before durable AI output.
+      properties:
+        count:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageMetadata"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageMetadata"
+    MessageMetadata:
+      type: object
+      properties:
+        platformMessageId:
+          type: string
+        replyToMessageId:
+          type: string
+        quote:
+          type: object
+        createTime:
+          type: integer
+        media_manifest:
+          type: array
+          items:
+            type: object
+    ChatLabPullResponse:
+      type: object
+      properties:
+        chatlab:
+          type: object
+        meta:
+          type: object
+        members:
+          type: array
+          items:
+            type: object
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageMetadata"
+        sync:
+          type: object
+          properties:
+            hasMore:
+              type: boolean
+            nextSince:
+              type: integer
+            nextOffset:
+              type: integer
+            watermark:
+              type: string
+        sync_watermark:
+          type: string
+        media_manifest:
+          type: array
+          items:
+            type: object
