@@ -272,6 +272,9 @@ paths:
       tags: [push]
       summary: Server-sent event stream for message push.
       description: Browser EventSource must use query token because it cannot set headers.
+      x-weflowbridge-ai-allowed: false
+      x-weflowbridge-risk: live-raw-stream
+      deprecated: true
       parameters:
         - name: access_token
           in: query

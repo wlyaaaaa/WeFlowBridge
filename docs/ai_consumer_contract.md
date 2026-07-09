@@ -42,7 +42,7 @@ Any AI consumer that reads WeFlow messages must report or internally preserve th
 | `lastTimestamp_matches_newest` | Whether `sessions.lastTimestamp` equals `messages[0].createTime` for latest reads |
 | `content_scope` | Whether output contains metadata only, excerpts, or full text |
 | `request_method` | `GET` or `POST`; prefer `POST` when parameters are complex or contain many filters |
-| `endpoint_family` | `sessions`, `messages`, `chatlab_pull`, `group_members`, `sns`, or `push` |
+| `endpoint_family` | `sessions`, `messages`, `chatlab_pull`, `group_members`, or `sns`; `push` is documented but not an AI envelope endpoint |
 | `sync_watermark` | `sync.watermark` from ChatLab Pull, when present |
 | `media_manifest` | Non-path metadata-only list of media fields or exported file counts; do not store media payloads or raw media paths in this repository |
 

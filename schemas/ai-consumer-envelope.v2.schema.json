@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "schema_version",
     "current_library",
     "library_evidence",
     "target_account",
@@ -132,6 +133,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "platformMessageId": {
             "type": ["string", "null"]
@@ -150,6 +152,7 @@
     },
     "privacy": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["redacted", "raw_messages_included", "raw_media_paths_included"],
       "properties": {
         "redacted": {

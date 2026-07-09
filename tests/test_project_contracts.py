@@ -192,6 +192,7 @@ class ProjectContractTests(unittest.TestCase):
             required,
             {
                 "current_library",
+                "schema_version",
                 "library_evidence",
                 "target_account",
                 "target_conversation",
@@ -212,6 +213,8 @@ class ProjectContractTests(unittest.TestCase):
         for forbidden_key in ("raw_messages", "message_text", "mediaPath", "local_path"):
             with self.subTest(forbidden_key=forbidden_key):
                 self.assertNotIn(forbidden_key, schema["properties"])
+        self.assertFalse(schema["properties"]["privacy"]["additionalProperties"])
+        self.assertFalse(schema["properties"]["reply_metadata"]["items"]["additionalProperties"])
         self.assertEqual(example["schema_version"], "ai-consumer-envelope.v2")
         self.assertEqual(example["talker"], "<redacted:chatroom>")
         self.assertFalse(example["message_content_included"])
@@ -311,7 +314,18 @@ class ProjectContractTests(unittest.TestCase):
         self.assertIn("deprecated: true", openapi)
         write_operation_count = openapi.count("x-weflowbridge-risk: write-operation")
         not_allowed_count = openapi.count("x-weflowbridge-ai-allowed: false")
-        self.assertEqual(write_operation_count, not_allowed_count)
+        self.assertEqual(write_operation_count + 1, not_allowed_count)
+
+    def test_openapi_push_stream_is_not_default_ai_callable(self):
+        openapi = read_text("docs/openapi.yaml")
+        push_section = openapi.split("/api/v1/push/messages:", 1)[1]
+        push_section = push_section.split("components:", 1)[0]
+
+        self.assertIn("access_token", push_section)
+        self.assertIn("text/event-stream", push_section)
+        self.assertIn("x-weflowbridge-ai-allowed: false", push_section)
+        self.assertIn("x-weflowbridge-risk: live-raw-stream", push_section)
+        self.assertIn("deprecated: true", push_section)
 
     def test_ci_workflow_and_docs_link_machine_contracts(self):
         workflow = read_text(".github/workflows/contract.yml")
@@ -340,6 +354,7 @@ class ProjectContractTests(unittest.TestCase):
                 self.assertIn("schemas/ai-consumer-envelope.v2.schema.json", text)
 
         self.assertIn("schemas/project-manifest.v1.schema.json", readme)
+        self.assertIn("documented but not an AI envelope endpoint", contract)
         self.assertIn("AI Integration 1.0", closeout)
         public_boundary_command = manifest["safe_verification"]["public_boundary"].replace("\\", "/")
         local_ci_command = manifest["safe_verification"]["local_ci"].replace("\\", "/")
